@@ -23,6 +23,16 @@ import { triggerQuotaWall } from '@/contexts/QuotaContext';
 const ok = (data) => ({ data, error: null });
 const fail = (message) => ({ data: null, error: { message } });
 
+/** ngrok free tier serves an HTML interstitial to browsers (200, no CORS). */
+function isNgrokApi(url) {
+  try {
+    return new URL(url).hostname.endsWith('ngrok-free.dev')
+      || new URL(url).hostname.endsWith('ngrok.io');
+  } catch {
+    return false;
+  }
+}
+
 async function getAuthHeader() {
   const { data: { session } } = await supabase.auth.getSession();
   return session?.access_token
@@ -43,6 +53,7 @@ async function request(method, path, { body, search } = {}) {
   const headers = {
     ...(await getAuthHeader()),
     ...(body !== undefined && { 'Content-Type': 'application/json' }),
+    ...(isNgrokApi(url.origin) && { 'ngrok-skip-browser-warning': 'true' }),
   };
 
   let response;
