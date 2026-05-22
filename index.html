@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      Hebrew-first app — never auto-translate.
+
+      Google Translate (and similar browser extensions) wrap text nodes
+      in <font> tags AFTER React builds its fiber map. When React then
+      tries to insert a new child using a sibling-reference node that
+      Translate has since re-parented, the browser throws:
+
+        NotFoundError: Failed to execute 'insertBefore' on 'Node':
+        The node before which the new node is to be inserted is not
+        a child of this node.
+
+      That manifested on this app when opening / generating inside the
+      AI image modal (which mounts new Hebrew text into a portal
+      mid-render). Setting `notranslate` on the document neutralizes it
+      globally; the Modal panel sets `translate="no"` defensively too,
+      in case the meta is ever stripped by an embed scenario.
+    -->
+    <meta name="google" content="notranslate" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>CraftAd</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

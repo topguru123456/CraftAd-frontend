@@ -1,0 +1,19 @@
+node_modules
+dist
+.env
+.env.local
+.DS_Store
+
+# Vite cache
+.vite/
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+
+# Editor / OS scratch files
+*.tmp.*
+*.swp
+.idea/
+.vscode/*
+!.vscode/settings.json
