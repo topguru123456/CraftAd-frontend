@@ -79,15 +79,22 @@ export function TranzilaIframe({ iframeUrl, fields, onComplete }) {
         </div>
       )}
 
-      {/* `allow=payment` lets Tranzila's JS inside the iframe invoke
-          the Payment Request API (Apple Pay / Google Pay). dir=ltr
-          because card numbers + Tranzila's hosted UI are LTR. */}
+      {/* `allow=payment` is the modern Permissions Policy attribute;
+          `allowpaymentrequest='true'` is the legacy attribute Tranzila's
+          docs explicitly require for the Google Pay button to render
+          inside the iframe. We pass both — modern browsers honor the
+          first, Tranzila's iframe still checks the second.
+          dir=ltr because card numbers + Tranzila's hosted UI are LTR. */}
       <iframe
         name={IFRAME_NAME}
         title="Tranzila payment"
         dir="ltr"
         allow="payment"
-        className="block w-full min-h-[520px] border-0 bg-white"
+        allowpaymentrequest="true"
+        /* min-height tightens on small phones — Tranzila's hosted form
+         * fits in ~460px on mobile. Bumps to 520px from sm: where there's
+         * room to breathe. */
+        className="block w-full min-h-[460px] sm:min-h-[520px] border-0 bg-white"
       />
     </div>
   );
