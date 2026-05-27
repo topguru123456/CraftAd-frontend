@@ -1,197 +1,133 @@
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BillingToggle,
   ManageSubscriptionButton,
   PlansGrid,
   PLANS,
-  SubscribeConfirmModal,
+  ChangePlanConfirmModal,
   billingApi,
   useCurrentPlan,
 } from '@features/billing';
+import { useSubscriptionInfo } from '@features/settings/hooks/useSubscriptionInfo';
 import { requestQuotaRefresh } from '@/contexts/QuotaContext';
 import { useToast } from '@/contexts/ToastContext';
+import { Button } from '@components/ui';
 import { supabase } from '@lib/supabase';
+import { ROUTES } from '@config/routes';
 import HeroBg from '@assets/images/pricing/hero.png';
 
-/* /app/settings/payment
+/* /app/settings/payment — Tranzila plan picker.
  *
- * Two-stage subscribe flow:
+ * Flow (Tranzila):
+ *   1. Click plan → ChangePlanConfirmModal (no Stripe Checkout, no
+ *      redirect to a portal). Same plan + cycle while active is a no-op.
+ *   2. Confirm → if user is canceled-pending, POST /billing/tranzila/resume
+ *      first (atomic resume+change), then POST /billing/tranzila/change-plan.
+ *   3. Refresh session + quota; show toast. No charge today — the next
+ *      renewal at the existing period_end uses the new amount.
  *
- *   1. Click plan → POST /billing/checkout — BE checks if user has a
- *      saved payment method.
- *        kind=confirm  → open in-app SubscribeConfirmModal (saved-card
- *                        path; no second card collection)
- *        kind=redirect → window.location.assign(stripeCheckoutUrl)
- *                        (no PM on file; Stripe collects card)
+ * Tokenless empty state: users who reached this page without going
+ * through the trial flow (no tranzila_token on user_metadata) see a
+ * "complete trial first" CTA. In practice OnboardingGuard routes them
+ * elsewhere, but this is the defensive UI for the edge case.
  *
- *   2. From the confirm modal: user clicks "אישור" → POST /billing/subscribe
- *      creates the Subscription via API using the saved card. Webhook
- *      writes user_metadata.subscription_* a moment later. We show a
- *      success toast and close the modal — the UI reflects the new plan
- *      automatically on the next render (useCurrentPlan picks up the
- *      metadata change via Supabase's session refresh).
- *
- * The real source of truth for "did the subscribe land" is the user's
- * subscription_plan_id metadata, written by the Stripe webhook — never
- * the Checkout query param or the modal close. */
+ * NOT in this page (vs the prior Stripe version):
+ *   - ?checkout=success return handling — no external redirect now.
+ *   - SubscribeConfirmModal (saved-card path) — replaced by
+ *     ChangePlanConfirmModal which handles change-plan + resume.
+ *   - Stripe-specific sync polling — Tranzila state is server-owned
+ *     and visible after refreshSession() completes synchronously.
+ */
 export default function PaymentPage() {
-  const currentPlan = useCurrentPlan();
-  const [billingCycle, setBillingCycle] = useState(currentPlan.cycle);
-  const [selecting, setSelecting] = useState(null); // plan.id while preview is in flight
-  const [selectError, setSelectError] = useState(null);
-  const [confirmState, setConfirmState] = useState(null); // { plan, cycle, card } when modal is open
+  const nav = useNavigate();
   const toast = useToast();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const currentPlan = useCurrentPlan();
+  const info = useSubscriptionInfo();
+  const [billingCycle, setBillingCycle] = useState(currentPlan.cycle);
+  const [selecting, setSelecting] = useState(null); // plan.id while change-plan is in flight
+  const [confirmState, setConfirmState] = useState(null);
 
-  // Stripe Checkout redirected back. Three things have to happen for the
-  // UI to reflect the new plan, in this exact order:
-  //   1. POST /billing/sync — BE queries Stripe for the customer's current
-  //      sub and writes user_metadata.subscription_*. The webhook IS the
-  //      eventual writer, but webhooks may be missing/unwired/delayed, so
-  //      sync gives us a deterministic "land it now" path.
-  //   2. supabase.auth.refreshSession() — the FE's cached JWT carries
-  //      user_metadata; without refreshing, useCurrentPlan keeps reading
-  //      the pre-subscribe values for up to an hour. This pulls a fresh
-  //      JWT so the new metadata becomes visible.
-  //   3. requestQuotaRefresh() — usage counts may shift (limits changed
-  //      → already-existing rows might now be over/under, ManageSubscription
-  //      shows accurate state).
-  //
-  // We do this regardless of whether the webhook is configured. If both
-  // paths fire, the inline sync wins and the webhook is a no-op overwrite
-  // with identical values.
-  useEffect(() => {
-    const checkoutResult = searchParams.get('checkout');
-    if (!checkoutResult) return;
+  if (!info.hasTranzilaToken) {
+    return <NoTokenEmpty onGoToTrial={() => nav(ROUTES.trial.root)} />;
+  }
 
-    if (checkoutResult === 'success') {
-      (async () => {
-        let syncResult = null;
-        let syncError = null;
-        for (let attempt = 0; attempt < 4; attempt += 1) {
-          const { data, error } = await billingApi.sync();
-          if (error) {
-            syncError = error;
-            break;
-          }
-          syncResult = data;
-          if (data?.found) break;
-          await new Promise((r) => setTimeout(r, 1500));
-        }
-
-        if (syncError) {
-          toast.error(
-            'הרכישה הושלמה ב-Stripe, אך סנכרון המסלול נכשל. נסו לרענן את העמוד.',
-          );
-          return;
-        }
-
-        await supabase.auth.refreshSession();
-        requestQuotaRefresh();
-
-        if (!syncResult?.found) {
-          toast.warning(
-            'התשלום התקבל. המסלול עדיין מתעדכן — רעננו את העמוד בעוד כמה שניות.',
-          );
-          return;
-        }
-
-        toast.success(
-          `המסלול ${syncResult.planId} פעיל! הניסיון של 7 ימים החל — לא יבוצע חיוב היום.`,
-        );
-      })();
-    } else if (checkoutResult === 'cancelled') {
-      toast.info('הרכישה בוטלה. ניתן לחזור ולנסות שוב בכל עת.');
+  const onSelectPlan = (plan) => {
+    if (selecting || confirmState) return;
+    /* Same plan + cycle while active = no-op. A canceled-pending user
+     * picking their current plan still opens the modal — that flow
+     * resumes the subscription. */
+    const isSameSelection =
+      plan.id === currentPlan.planId &&
+      billingCycle === currentPlan.cycle &&
+      !info.cancelAtPeriodEnd;
+    if (isSameSelection) {
+      toast.info('זהו המסלול הנוכחי שלך');
+      return;
     }
-
-    const next = new URLSearchParams(searchParams);
-    next.delete('checkout');
-    next.delete('session_id');
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams, toast]);
-
-  const onSelectPlan = async (plan) => {
-    if (selecting) return;
-    setSelecting(plan.id);
-    setSelectError(null);
-
-    const { data, error } = await billingApi.previewCheckout({
+    setConfirmState({
       planId: plan.id,
       cycle: billingCycle,
+      needsResume: info.cancelAtPeriodEnd,
     });
-
-    if (error) {
-      setSelectError(error.message ?? 'פתיחת התשלום נכשלה. נסו שוב.');
-      setSelecting(null);
-      return;
-    }
-
-    if (data.kind === 'confirm') {
-      // Saved-card path — open in-app confirmation modal. selecting stays
-      // set to keep the card visually locked while the modal is open.
-      setConfirmState({ plan, cycle: billingCycle, card: data.card });
-      return;
-    }
-
-    if (data.kind === 'redirect') {
-      // No PM on file — let Stripe Checkout collect a card. The redirect
-      // navigates away before this function returns.
-      window.location.assign(data.url);
-      return;
-    }
-
-    setSelectError('תגובה לא צפויה מהשרת.');
-    setSelecting(null);
   };
 
   const onCancelConfirm = () => {
+    if (selecting) return;
     setConfirmState(null);
-    setSelecting(null);
   };
 
-  // Called from inside the modal. The modal awaits the result so it can
-  // surface an error inline without us re-opening it; on success it
-  // shows its spinner until we close it via setConfirmState(null).
-  //
-  // The BE's subscribeWithSavedCard already wrote user_metadata inline
-  // (no webhook dependency), so we only need to refresh the cached JWT
-  // and the quota counts here — no extra sync call.
-  const onConfirmSubscribe = async () => {
+  const onConfirmChange = async () => {
     if (!confirmState) return { error: { message: 'no plan selected' } };
-    const { data, error } = await billingApi.subscribe({
-      planId: confirmState.plan.id,
+    setSelecting(confirmState.planId);
+
+    /* Resume first if needed. Two server round-trips rather than a single
+     * combined endpoint — keeps each operation single-responsibility and
+     * matches the BE's existing /cancel + /change-plan symmetry. The
+     * window between resume and change-plan is small; if change-plan
+     * fails after a successful resume, the user ends up resumed but on
+     * their old plan — acceptable (they can retry the change). */
+    if (confirmState.needsResume) {
+      const { error: resumeErr } = await billingApi.resumeSubscription();
+      if (resumeErr) {
+        setSelecting(null);
+        return { error: resumeErr };
+      }
+    }
+
+    const { error } = await billingApi.changePlan({
+      planId: confirmState.planId,
       cycle: confirmState.cycle,
     });
-    if (error) return { error };
+    if (error) {
+      setSelecting(null);
+      return { error };
+    }
 
-    /* Pull a fresh JWT so user_metadata.subscription_plan_id (just
-     * written by the BE) becomes visible to useCurrentPlan. Without
-     * this the cached JWT keeps showing the pre-subscribe plan for up
-     * to an hour. Quota refresh recomputes the gate against the new
-     * limits. */
+    /* Pull fresh JWT so useCurrentPlan + useSubscriptionInfo see the
+     * new plan_id/cycle/cancel_at_period_end values. Refresh quota
+     * cache so any limit changes (Scale → Pro etc) apply immediately. */
     await supabase.auth.refreshSession();
     requestQuotaRefresh();
 
+    const newPlan = PLANS.find((p) => p.id === confirmState.planId);
     toast.success(
-      `המסלול ${confirmState.plan.name} פעיל! הניסיון של 7 ימים החל — לא יבוצע חיוב היום.`,
+      confirmState.needsResume
+        ? `המנוי הומשך והוגדר ל-${newPlan?.name ?? confirmState.planId}.`
+        : `המסלול עודכן ל-${newPlan?.name ?? confirmState.planId}. החיוב הבא לפי המחיר החדש.`,
     );
     setConfirmState(null);
     setSelecting(null);
-    return { data };
+    return { data: { ok: true } };
   };
 
   return (
-    /* Full-bleed pricing hero — see component history for the rationale
-       on the mobile-vs-desktop overflow behaviour below. */
     <div
       dir="rtl"
       className="flex-1 relative bg-cover bg-center bg-no-repeat md:overflow-hidden"
       style={{ backgroundImage: `url(${HeroBg})` }}
     >
       <div className="relative mx-auto w-full max-w-[1500px] px-4 sm:px-8 lg:px-10 py-6 sm:py-8 flex flex-col gap-6 sm:gap-7 md:h-full">
-        {/* Top row: cycle toggle centered, "manage subscription" on the
-            RTL end (visual left) for users who already have a plan. */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <ManageSubscriptionButton />
           <div className="flex-1 flex justify-center">
@@ -201,10 +137,6 @@ export default function PaymentPage() {
           <div className="w-[140px] hidden sm:block" />
         </div>
 
-        {selectError && (
-          <p className="text-sm text-danger text-center">{selectError}</p>
-        )}
-
         <PlansGrid
           billingCycle={billingCycle}
           currentPlan={currentPlan}
@@ -213,16 +145,37 @@ export default function PaymentPage() {
         />
       </div>
 
-      {/* Pull the latest PLANS entry by id so the modal always renders
-          against the canonical plan config (rather than a stale prop). */}
-      <SubscribeConfirmModal
+      <ChangePlanConfirmModal
         open={confirmState !== null}
         onClose={onCancelConfirm}
-        onConfirm={onConfirmSubscribe}
-        card={confirmState?.card ?? null}
-        plan={confirmState ? PLANS.find((p) => p.id === confirmState.plan.id) : null}
+        onConfirm={onConfirmChange}
+        plan={confirmState ? PLANS.find((p) => p.id === confirmState.planId) : null}
         cycle={confirmState?.cycle}
+        currentPlanId={currentPlan.planId}
+        currentCycle={currentPlan.cycle}
+        periodEndUnix={info.periodEndUnix}
+        needsResume={confirmState?.needsResume}
       />
+    </div>
+  );
+}
+
+function NoTokenEmpty({ onGoToTrial }) {
+  return (
+    <div
+      dir="rtl"
+      className="flex-1 flex items-center justify-center px-6 py-12 bg-surface-muted/30"
+    >
+      <div className="text-center max-w-md space-y-5">
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-ink">
+          השלמת רישום נדרשת
+        </h2>
+        <p className="text-base text-ink-muted leading-relaxed">
+          כדי לבחור מסלול יש להזין אמצעי תשלום בתהליך הניסיון. הוספת הכרטיס
+          לאימות בלבד — לא יבוצע חיוב במשך 7 ימי הניסיון.
+        </p>
+        <Button onClick={onGoToTrial}>התחלת ניסיון</Button>
+      </div>
     </div>
   );
 }

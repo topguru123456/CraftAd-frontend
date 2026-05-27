@@ -131,6 +131,13 @@ export const billingApi = {
     return ok(data);
   },
 
+  /* POST /billing/tranzila/resume — undo a pending cancellation. */
+  async resumeSubscription() {
+    const { data, error } = await apiClient.post('/billing/tranzila/resume', {});
+    if (error) return { data: null, error };
+    return ok(data);
+  },
+
   /* POST /billing/tranzila/change-plan — applies on next renewal. */
   async changePlan({ planId, cycle }) {
     if (!planId) return { data: null, error: { message: 'planId is required' } };

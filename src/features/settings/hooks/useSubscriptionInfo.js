@@ -39,6 +39,8 @@ export function useSubscriptionInfo() {
     const cardLast4 =
       typeof meta.tranzila_card_last4 === 'string' ? meta.tranzila_card_last4 : null;
 
+    const hasTranzilaToken = typeof meta.tranzila_token === 'string' && meta.tranzila_token.length > 0;
+
     return {
       planId,
       planName: plan?.name ?? 'Starter',
@@ -48,6 +50,10 @@ export function useSubscriptionInfo() {
       isCanceled: status === 'canceled',
       cancelAtPeriodEnd,
       cardLast4,
+      /* True when the user has a Tranzila token on file. Used by
+       * PaymentPage to gate the plan-grid behind "complete trial first"
+       * for users who somehow reached the page without a token. */
+      hasTranzilaToken,
     };
   }, [user]);
 }
