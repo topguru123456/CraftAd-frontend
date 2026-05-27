@@ -148,6 +148,9 @@ function PaymentPanel({ session, bootError, onComplete }) {
         <p className="text-sm sm:text-base text-ink-muted">
           הוסף כרטיס לאימות בלבד - לא יבוצע חיוב כעת
         </p>
+        <p className="text-sm sm:text-base text-ink-muted">
+          ניתן לבטל בכל עת
+        </p>
       </header>
 
       <div className="flex-1 flex flex-col">
