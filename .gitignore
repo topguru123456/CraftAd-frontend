@@ -17,3 +17,5 @@ supabase/.branches/
 .idea/
 .vscode/*
 !.vscode/settings.json
+
+fontend.zip

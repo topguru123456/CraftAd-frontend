@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Logo, Button, WhatsAppButton } from '@components/ui';
 import { HowItWorksCard, LockIcon, StartTrialModal } from '@features/trial';
-import { billingApi } from '@features/billing';
 import { onboardingApi } from '@features/onboarding';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { supabase } from '@lib/supabase';
 import TickIcon from '@assets/icons/tick.svg?react';
 import heroImage from '@assets/images/onboarding/hero.png';
 import { ROUTES } from '@config/routes';
@@ -17,6 +17,15 @@ const BENEFITS = [
   'פרטי האשראי לא ישמרו במערכת',
 ];
 
+/* Polling cap for the Tranzila notify callback. Tranzila redirects the
+ * iframe to /trial/success front-channel; the notify_url back-channel
+ * lands a moment later and writes user_metadata.tranzila_token. We need
+ * the token visible before we mark onboarding complete + navigate, so
+ * we poll auth.refreshSession() up to NOTIFY_POLL_ATTEMPTS times at
+ * NOTIFY_POLL_INTERVAL_MS spacing. */
+const NOTIFY_POLL_ATTEMPTS = 10;
+const NOTIFY_POLL_INTERVAL_MS = 1000;
+
 export default function TrialStartPage() {
   const nav = useNavigate();
   const toast = useToast();
@@ -26,19 +35,29 @@ export default function TrialStartPage() {
   const onBack = () => nav(ROUTES.onboarding.root);
   const onStartTrial = () => setTrialModalOpen(true);
 
-  const onTrialSuccess = async (setupIntent) => {
-    const pmId =
-      typeof setupIntent?.payment_method === 'string'
-        ? setupIntent.payment_method
-        : setupIntent?.payment_method?.id;
+  /* Called by StartTrialModal once the Tranzila iframe's success-page
+   * postMessage arrives. The CARD has been authorized at this point;
+   * what we don't know yet is whether our BE has received Tranzila's
+   * notify callback and written user_metadata. Poll for the token; bail
+   * out gracefully if it doesn't appear within ~10s (notify lost or
+   * BE down — user can refresh and re-enter the trial flow). */
+  const onTrialSuccess = async () => {
+    let tokenLanded = false;
+    for (let i = 0; i < NOTIFY_POLL_ATTEMPTS; i += 1) {
+      const { data: { session } } = await supabase.auth.refreshSession();
+      if (session?.user?.user_metadata?.tranzila_token) {
+        tokenLanded = true;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, NOTIFY_POLL_INTERVAL_MS));
+    }
 
-    const { error: pmError } = await billingApi.finalizePaymentMethod({
-      paymentMethodId: pmId,
-    });
-    if (pmError) {
+    if (!tokenLanded) {
       toast.error(
-        'הכרטיס נשמר ב-Stripe, אך לא הצלחנו לקשר אותו לחשבון. נסו שוב מעמוד התשלום.',
+        'סיום הרישום בעיכוב. רעננו את העמוד בעוד כמה שניות.',
       );
+      setTrialModalOpen(false);
+      return;
     }
 
     const currentOnboarding = onboardingApi.read(user);

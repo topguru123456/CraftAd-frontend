@@ -11,6 +11,7 @@ import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/auth/ResetPasswordPage';
 import OnboardingPage from '@/pages/onboarding/OnboardingPage';
 import TrialStartPage from '@/pages/trial/TrialStartPage';
+import TrialIframeReturn from '@/pages/trial/TrialIframeReturn';
 import ProjectsPage from '@/pages/app/ProjectsPage';
 import NewProjectPage from '@/pages/app/projects/NewProjectPage';
 import ProjectCreationPage from '@/pages/app/projects/ProjectCreationPage';
@@ -44,6 +45,13 @@ export const router = createBrowserRouter([
       { path: 'reset-password', element: <ResetPasswordPage /> },
     ],
   },
+  /* Public Tranzila iframe return routes. The Tranzila iframe redirects
+   * to these on success/failure; they postMessage the parent window
+   * (StartTrialModal) and show minimal UI. They MUST be public — they
+   * load inside the iframe without a JWT context, so ProtectedRoute
+   * would bounce them to sign-in. */
+  { path: '/trial/success', element: <TrialIframeReturn result="success" /> },
+  { path: '/trial/failed',  element: <TrialIframeReturn result="failed" /> },
   {
     element: <ProtectedRoute />,
     children: [

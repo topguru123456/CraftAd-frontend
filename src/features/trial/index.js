@@ -5,6 +5,7 @@ export { PlanSummaryCard } from './components/PlanSummaryCard';
 export { PlanFeaturesCard } from './components/PlanFeaturesCard';
 export { CouponInputCard } from './components/CouponInputCard';
 export { TrialPaymentForm } from './components/TrialPaymentForm';
+export { TranzilaIframe } from './components/TranzilaIframe';
 export { PaymentMethodIcons } from './components/PaymentMethodIcons';
 export { GooglePayButton } from './components/GooglePayButton';
 export { trialApi } from './api/trial.api';

@@ -1,66 +1,76 @@
 import { useEffect, useState } from 'react';
-import { Elements } from '@stripe/react-stripe-js';
 import { Logo, Modal, Spinner } from '@components/ui';
-import { getStripe } from '@lib/stripe';
-import { trialApi } from '../api/trial.api';
+import { billingApi } from '@features/billing';
 import { STARTER_PLAN } from '../plans.config';
 import { PlanSummaryCard } from './PlanSummaryCard';
 import { PlanFeaturesCard } from './PlanFeaturesCard';
 import { CouponInputCard } from './CouponInputCard';
-import { TrialPaymentForm } from './TrialPaymentForm';
+import { TranzilaIframe } from './TranzilaIframe';
 import { PaymentMethodIcons } from './PaymentMethodIcons';
-import { GooglePayButton } from './GooglePayButton';
 
-const STRIPE_APPEARANCE = {
-  theme: 'stripe',
-  labels: 'above',
-  variables: {
-    fontFamily: '"Discovery Fs", Heebo, system-ui, sans-serif',
-    colorPrimary: '#ED5699',
-    colorText: '#0A1F30',
-    colorTextSecondary: '#5A6B7A',
-    colorTextPlaceholder: '#8A98A6',
-    colorDanger: '#DC2626',
-    borderRadius: '10px',
-    spacingUnit: '4px',
-  },
-  rules: {
-    '.Label': { fontWeight: '500', fontSize: '14px', color: '#0A1F30' },
-    '.Input': { borderColor: '#E5E9EE', boxShadow: 'none', padding: '12px' },
-    '.Input:focus': { borderColor: '#ED5699', boxShadow: '0 0 0 3px rgba(237,86,153,0.18)' },
-    '.Tab': { borderColor: '#E5E9EE' },
-    '.Tab--selected': { borderColor: '#ED5699', color: '#ED5699' },
-  },
-};
-
+/* Trial-start modal.
+ *
+ * Replaces the Stripe Elements implementation with the Tranzila classic
+ * iframe. On open:
+ *   1. POST /billing/tranzila/handshake → { iframeUrl, fields }
+ *   2. Render TranzilaIframe with those params
+ *   3. User enters card / uses Apple Pay / Google Pay inside the iframe
+ *   4. Tranzila redirects the iframe → /trial/success → postMessage parent
+ *   5. onComplete('success') → consumer's onSuccess callback fires
+ *
+ * The Tranzila iframe handles wallet buttons internally — Apple Pay and
+ * Google Pay show up inline when enabled on the terminal (apple_pay=1 +
+ * googlepay=1 in the handshake response). No GooglePayButton or Divider
+ * needed on our side; the iframe is the entire payment surface.
+ *
+ * Trial config (Starter / yearly) is sent BE-side; the BE writes
+ * subscription_plan_id + cycle into user_metadata on successful notify.
+ * The FE doesn't pick the plan here — TrialStartPage owns that.
+ */
 export function StartTrialModal({ open, onClose, onSuccess, plan = STARTER_PLAN }) {
-  const [clientSecret, setClientSecret] = useState(null);
+  const [session, setSession] = useState(null);
   const [bootError, setBootError] = useState(null);
-  const stripePromise = getStripe();
 
+  /* Mint a fresh handshake every time the modal opens. The session is
+   * single-use + 15-minute-bounded BE-side; a stale one from a prior
+   * open is already invalid. */
   useEffect(() => {
     if (!open) {
-      setClientSecret(null);
+      setSession(null);
       setBootError(null);
       return;
     }
     let cancelled = false;
-    trialApi
-      .createSetupIntent()
+
+    billingApi
+      .initIframeSession({ planId: 'starter', cycle: 'yearly', kind: 'trial' })
       .then(({ data, error }) => {
         if (cancelled) return;
-        if (error || !data?.clientSecret) {
-          setBootError(error?.message || 'לא ניתן להתחיל את התהליך כעת. נסו שוב מאוחר יותר.');
+        if (error || !data?.iframeUrl) {
+          setBootError(
+            error?.message || 'לא ניתן להתחיל את התהליך כעת. נסו שוב מאוחר יותר.',
+          );
           return;
         }
-        setClientSecret(data.clientSecret);
+        setSession(data);
       })
       .catch((err) => {
         if (cancelled) return;
         setBootError(err?.message || 'אירעה שגיאת רשת');
       });
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
+
+  const handleComplete = (result) => {
+    if (result === 'success') {
+      onSuccess?.();
+      return;
+    }
+    setBootError('התשלום לא הושלם. סגרו ונסו שוב.');
+  };
 
   return (
     <Modal
@@ -73,10 +83,9 @@ export function StartTrialModal({ open, onClose, onSuccess, plan = STARTER_PLAN 
       <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[640px]">
         <PaymentPanel
           plan={plan}
-          clientSecret={clientSecret}
-          stripePromise={stripePromise}
+          session={session}
           bootError={bootError}
-          onSuccess={onSuccess}
+          onComplete={handleComplete}
         />
         <PlanPanel plan={plan} />
       </div>
@@ -111,7 +120,7 @@ function PlanPanel({ plan }) {
   );
 }
 
-function PaymentPanel({ plan, clientSecret, stripePromise, bootError, onSuccess }) {
+function PaymentPanel({ session, bootError, onComplete }) {
   return (
     <section
       dir="rtl"
@@ -130,28 +139,24 @@ function PaymentPanel({ plan, clientSecret, stripePromise, bootError, onSuccess 
         </p>
       </header>
 
-      <div className="mb-5">
-        <GooglePayButton onClick={() => { /* placeholder — wallet flow wired later */ }} />
-      </div>
-
-      <Divider>או שלם עם כרטיס אשראי</Divider>
-
-      <div className="mt-6 flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col">
         {bootError ? (
-          <div className="rounded-card border border-danger/20 bg-danger/5 p-4 text-right" dir="rtl">
+          <div
+            className="rounded-card border border-danger/20 bg-danger/5 p-4 text-right"
+            dir="rtl"
+          >
             <p className="text-sm text-danger">{bootError}</p>
           </div>
-        ) : !clientSecret ? (
+        ) : !session ? (
           <div className="flex flex-1 items-center justify-center min-h-[240px]">
             <Spinner size={28} />
           </div>
         ) : (
-          <Elements
-            stripe={stripePromise}
-            options={{ clientSecret, appearance: STRIPE_APPEARANCE, locale: 'he' }}
-          >
-            <TrialPaymentForm plan={plan} onSuccess={onSuccess} />
-          </Elements>
+          <TranzilaIframe
+            iframeUrl={session.iframeUrl}
+            fields={session.fields}
+            onComplete={onComplete}
+          />
         )}
       </div>
 
@@ -159,15 +164,5 @@ function PaymentPanel({ plan, clientSecret, stripePromise, bootError, onSuccess 
         <PaymentMethodIcons />
       </div>
     </section>
-  );
-}
-
-function Divider({ children }) {
-  return (
-    <div className="flex items-center gap-3 text-ink-muted text-sm">
-      <span className="h-px flex-1 bg-line" />
-      <span>{children}</span>
-      <span className="h-px flex-1 bg-line" />
-    </div>
   );
 }

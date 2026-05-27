@@ -101,4 +101,45 @@ export const billingApi = {
     window.location.assign(data.url);
     return { error: null };
   },
+
+  /* --- Tranzila classic flow -------------------------------------
+   *
+   * POST /billing/tranzila/handshake — mint an iframe session. Returns
+   * { iframeUrl, fields, expiresAt }. The FE renders a hidden form
+   * with action=iframeUrl + target="<iframe-name>" + the fields as
+   * hidden inputs, then auto-submits. See TranzilaIframe component. */
+  async initIframeSession({ planId, cycle, kind }) {
+    if (!planId) return { data: null, error: { message: 'planId is required' } };
+    if (!cycle)  return { data: null, error: { message: 'cycle is required' } };
+    if (!kind)   return { data: null, error: { message: 'kind is required' } };
+    const { data, error } = await apiClient.post('/billing/tranzila/handshake', {
+      planId,
+      cycle,
+      kind,
+    });
+    if (error) return { data: null, error };
+    if (!data?.iframeUrl || !data?.fields) {
+      return { data: null, error: { message: 'התקבלה תשובה לא תקינה מהשרת' } };
+    }
+    return ok(data);
+  },
+
+  /* POST /billing/tranzila/cancel — grace-cancel until period end. */
+  async cancelSubscription() {
+    const { data, error } = await apiClient.post('/billing/tranzila/cancel', {});
+    if (error) return { data: null, error };
+    return ok(data);
+  },
+
+  /* POST /billing/tranzila/change-plan — applies on next renewal. */
+  async changePlan({ planId, cycle }) {
+    if (!planId) return { data: null, error: { message: 'planId is required' } };
+    if (!cycle)  return { data: null, error: { message: 'cycle is required' } };
+    const { data, error } = await apiClient.post('/billing/tranzila/change-plan', {
+      planId,
+      cycle,
+    });
+    if (error) return { data: null, error };
+    return ok(data);
+  },
 };
