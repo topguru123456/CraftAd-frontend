@@ -13,7 +13,8 @@ export default function InvoicePage() {
             נהלו את החשבוניות והתשלומים
           </h1>
           <p className="text-sm sm:text-base text-ink-muted max-w-3xl leading-relaxed">
-            במסך הזה תוכלו לראות את כל החשבוניות שלכם ולנהל אותם בקלות!
+            רשימת כל החיובים שבוצעו במנוי. חשבוניות מס נשלחות אליכם במייל
+            לאחר כל חיוב.
           </p>
         </header>
 

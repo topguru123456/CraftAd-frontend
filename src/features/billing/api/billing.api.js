@@ -138,6 +138,17 @@ export const billingApi = {
     return ok(data);
   },
 
+  /* GET /billing/tranzila/invoices — payment history backed by
+   * billing_payment_attempts. Same DTO shape as the existing Stripe
+   * listInvoices so the InvoicesTable component renders identically.
+   * pdfUrl is null on every row in v1 — formal tax invoices arrive
+   * via email from Tranzila per the merchant terminal config. */
+  async listTranzilaInvoices() {
+    const { data, error } = await apiClient.get('/billing/tranzila/invoices');
+    if (error) return { data: null, error };
+    return ok(Array.isArray(data) ? data : []);
+  },
+
   /* POST /billing/tranzila/change-plan — applies on next renewal. */
   async changePlan({ planId, cycle }) {
     if (!planId) return { data: null, error: { message: 'planId is required' } };
