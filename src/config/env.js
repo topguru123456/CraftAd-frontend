@@ -8,11 +8,16 @@ export const env = {
   // Override with VITE_API_URL in .env.local for staging / etc.
   apiUrl:
     import.meta.env.VITE_API_URL ||
-    (import.meta.env.DEV ? 'http://localhost:3001' : 'https://api.craftad.ai'),
+    (import.meta.env.DEV ? 'http://localhost:8000' : 'https://api.craftad.ai'),
   appName: import.meta.env.VITE_APP_NAME || 'CraftAd',
   supabaseUrl: required('VITE_SUPABASE_URL', import.meta.env.VITE_SUPABASE_URL),
   supabasePublishableKey: required('VITE_SUPABASE_PUBLISHABLE_KEY', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY),
   stripePublishableKey: required('VITE_STRIPE_PUBLISHABLE_KEY', import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY),
+  // DEV BYPASS — REMOVE BEFORE PROD.
+  // When true, exposes a "skip trial verification" button on /trial that
+  // calls POST /billing/tranzila/bypass-trial. The BE has its own gate
+  // (TRANZILA_BYPASS_ENABLED) — both must be true for the bypass to fire.
+  tranzilaBypassEnabled: import.meta.env.VITE_TRANZILA_BYPASS_ENABLED === 'true',
   isDev: import.meta.env.DEV,
   isProd: import.meta.env.PROD,
 };

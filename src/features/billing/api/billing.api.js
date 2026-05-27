@@ -138,6 +138,17 @@ export const billingApi = {
     return ok(data);
   },
 
+  /* DEV BYPASS — REMOVE BEFORE PROD.
+   * POST /billing/tranzila/bypass-trial. Gated by TRANZILA_BYPASS_ENABLED
+   * on the BE — calling this without the env flag set returns 403. Used
+   * during internal testing while real merchant test cards are being
+   * coordinated. */
+  async bypassTrial() {
+    const { data, error } = await apiClient.post('/billing/tranzila/bypass-trial', {});
+    if (error) return { data: null, error };
+    return ok(data);
+  },
+
   /* GET /billing/tranzila/invoices — payment history backed by
    * billing_payment_attempts. Same DTO shape as the existing Stripe
    * listInvoices so the InvoicesTable component renders identically.

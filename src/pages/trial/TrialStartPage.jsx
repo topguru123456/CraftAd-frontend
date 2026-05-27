@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { Logo, Button, WhatsAppButton } from '@components/ui';
 import { HowItWorksCard, LockIcon, StartTrialModal } from '@features/trial';
 import { onboardingApi } from '@features/onboarding';
+import { billingApi } from '@features/billing';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { supabase } from '@lib/supabase';
 import TickIcon from '@assets/icons/tick.svg?react';
 import heroImage from '@assets/images/onboarding/hero.png';
 import { ROUTES } from '@config/routes';
+import { env } from '@config/env';
 
 const BENEFITS = [
   'לא יתבצע חיוב בתקופת הניסיון',
@@ -34,6 +36,29 @@ export default function TrialStartPage() {
 
   const onBack = () => nav(ROUTES.onboarding.root);
   const onStartTrial = () => setTrialModalOpen(true);
+
+  /* DEV BYPASS — REMOVE BEFORE PROD.
+   * Hits POST /billing/tranzila/bypass-trial which writes fake trial
+   * metadata so the user lands in /app without real card capture. The
+   * BE endpoint is itself gated by TRANZILA_BYPASS_ENABLED, so even if
+   * this code ships with VITE_TRANZILA_BYPASS_ENABLED=true the BE will
+   * still 403 unless its own flag is also on. */
+  const [bypassing, setBypassing] = useState(false);
+  const onBypassTrial = async () => {
+    if (bypassing) return;
+    setBypassing(true);
+    const { error } = await billingApi.bypassTrial();
+    if (error) {
+      toast.error(error.message ?? 'הבייפס נכשל');
+      setBypassing(false);
+      return;
+    }
+    /* Reuse the same post-success flow as a real trial completion —
+     * polling will see the bypass-written tranzila_token immediately
+     * on the first refresh, then mark onboarding complete and nav. */
+    await onTrialSuccess();
+    setBypassing(false);
+  };
 
   /* Called by StartTrialModal once the Tranzila iframe's success-page
    * postMessage arrives. The CARD has been authorized at this point;
@@ -103,6 +128,32 @@ export default function TrialStartPage() {
                   חזור
                 </Button>
               </div>
+
+              {/* DEV BYPASS — REMOVE BEFORE PROD. Only renders when
+                  VITE_TRANZILA_BYPASS_ENABLED=true. Calls the BE bypass
+                  endpoint which itself is gated by TRANZILA_BYPASS_ENABLED;
+                  both flags must be on for this to work. Styled to look
+                  obviously non-production so a stray production deploy
+                  with the flag flipped is immediately visible to anyone
+                  looking at the page. */}
+              {env.tranzilaBypassEnabled && (
+                <div className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 mt-4 space-y-2">
+                  <p className="text-xs font-bold text-amber-800 text-center">
+                    DEV BYPASS — מצב בדיקה פנימי בלבד
+                  </p>
+                  <button
+                    type="button"
+                    onClick={onBypassTrial}
+                    disabled={bypassing}
+                    className="w-full rounded-xl h-11 font-bold text-sm bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-60 disabled:cursor-wait"
+                  >
+                    {bypassing ? 'מעקף בתהליך…' : 'דלג על וולידציה (מצב פיתוח)'}
+                  </button>
+                  <p className="text-[11px] text-amber-700 text-center leading-snug">
+                    אינו פעיל בייצור — דורש דגל ב-FE ובBE
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2 text-center pt-1">
                 <p className="text-base font-semibold text-brand-500 inline-flex items-center justify-center gap-1.5">
