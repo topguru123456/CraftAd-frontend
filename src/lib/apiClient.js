@@ -23,11 +23,15 @@ import { triggerQuotaWall } from '@/contexts/QuotaContext';
 const ok = (data) => ({ data, error: null });
 const fail = (message) => ({ data: null, error: { message } });
 
-/** ngrok free tier serves an HTML interstitial to browsers (200, no CORS). */
+/** ngrok free tier serves an HTML interstitial to browsers (200, no CORS).
+ * The `ngrok-skip-browser-warning` header bypasses it. Match `ngrok`
+ * anywhere in the hostname rather than a fixed suffix list — ngrok has
+ * churned free domains (ngrok.io → ngrok-free.dev → ngrok-free.app) and
+ * a stale suffix list silently drops the skip header, which surfaces as
+ * a confusing CORS error (the interstitial page has no ACAO header). */
 function isNgrokApi(url) {
   try {
-    return new URL(url).hostname.endsWith('ngrok-free.dev')
-      || new URL(url).hostname.endsWith('ngrok.io');
+    return new URL(url).hostname.includes('ngrok');
   } catch {
     return false;
   }
