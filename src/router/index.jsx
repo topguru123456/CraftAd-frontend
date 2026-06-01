@@ -28,7 +28,11 @@ import NotFoundPage from '@/pages/NotFoundPage';
 import { ROUTES } from '@config/routes';
 
 export const router = createBrowserRouter([
-  { path: '/', element: <Navigate to={ROUTES.auth.signUp} replace /> },
+  /* Root redirect lands on Sign In, not Sign Up — unauthenticated users
+   * coming back to the app are far more likely to be returning users
+   * than new signups. Sign Up stays reachable via the explicit
+   * /auth/sign-up route and the link on the Sign In page. */
+  { path: '/', element: <Navigate to={ROUTES.auth.signIn} replace /> },
   {
     path: '/auth',
     element: <AuthLayout />,
