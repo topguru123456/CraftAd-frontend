@@ -28,33 +28,36 @@ export function PlanSummaryCard({ plan }) {
       className="bg-white rounded-[20px] border-2 border-brand-100 shadow-[0_8px_24px_rgba(80,20,60,0.10)] p-5 sm:p-6"
     >
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 pb-4 border-b border-line">
-        <div className="text-right">
-          <p className="text-base font-extrabold text-ink leading-tight">{name}</p>
-          <p className="text-xs text-ink-muted mt-1">{trialLabel}</p>
-        </div>
-        <p className="text-base font-extrabold text-emerald-500 leading-tight pt-0.5 whitespace-nowrap">
+      <div className="flex items-center justify-between gap-4 pb-4 border-b border-line">
+        <p className="text-xl font-extrabold text-emerald-700 leading-tight pt-0.5 whitespace-nowrap">
           {trialLabel}
         </p>
+        <div className="text-left">
+          <p className="text-md font-extrabold text-ink leading-tight">{name}</p>
+          <p className="text-base text-ink-muted mt-1">{trialLabel}</p>
+        </div>
+        
       </div>
 
       {/* Body — stacked rows, right-aligned. Row 1 inline suffix, Row 2
           annual total below. */}
       <div className="pt-4 space-y-1 text-right">
-        <p className="text-sm leading-snug">
+        <p className="text-md leading-snug">
           <span className="text-ink-muted">{pricing.monthlyLabel} </span>
-          <span className="text-emerald-500 font-extrabold">
-            {pricing.monthly}{pricing.currency}
-          </span>
           <span className="text-ink-muted line-through ms-1">
             {pricing.monthlyOriginal}{pricing.currency}
           </span>
+          <span className="text-emerald-700 font-extrabold">
+            {pricing.monthly}{pricing.currency}
+          </span>
+          
           <span className="text-ink-muted"> {pricing.monthlySuffix}</span>
         </p>
-        <p className="text-xs text-ink-muted whitespace-nowrap">
-          (<span className="text-emerald-500 font-bold">{pricing.annualTotal}{pricing.currency}</span>
-          <span className="line-through ms-1">{pricing.annualTotalOriginal.toLocaleString('en-US')}{pricing.currency}</span>
-          {' '}{pricing.totalLabel})
+        <p className="text-md text-ink-muted whitespace-nowrap">
+          ({pricing.totalLabel}{' '} <span className="line-through ms-1">{pricing.annualTotalOriginal.toLocaleString('en-US')}{pricing.currency}</span>
+          <span className="text-emerald-700 font-bold">{pricing.annualTotal}{pricing.currency}</span>
+          
+          )
         </p>
       </div>
     </div>
