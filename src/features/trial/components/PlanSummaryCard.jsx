@@ -1,76 +1,65 @@
 /* Trial summary card on the left side of the checkout modal.
  *
- * Three blocks, top-to-bottom:
- *   1. Plan name + trial-duration pill (single source — no duplicate
- *      trial label across the card the way the prior version had).
- *   2. Monthly price block — small "לאחר מכן" label, big emerald
- *      headline price, muted strikethrough original beside it, suffix
- *      below. The emerald headline is the single focal point.
- *   3. Annual total row — divider above; label on the right, current
- *      total + strikethrough original on the left. Neutral `text-ink`
- *      so it doesn't fight the monthly headline emerald — emerald is
- *      reserved for the one focal element.
+ * Compact layout matching the Figma reference exactly:
  *
- * Layout is RTL throughout. flex+justify-between rows are in DOM
- * reading order; in RTL the first child renders on the visual right
- * (label position), the last child on the visual left (value position).
+ *   Top row    name (right) + green trial label (left)
+ *              with a small subtitle under the name
+ *              ─────────────────────────────────────
+ *   Row 1      לאחר מכן <green ₪M> ~~<gray ₪Mo>~~ <gray suffix>
+ *   Row 2      (<green ₪Y> ~~<gray ₪Yo>~~ סה״כ)
+ *
+ * Both content rows are right-aligned and stacked vertically — small
+ * inline text rather than separate vertical blocks. The compact form is
+ * deliberate per the design reference; the price line carries label +
+ * value + strikethrough + suffix all inline, the annual total sits
+ * underneath in parentheses at text-xs.
+ *
+ * tabular-nums on the numbers so the strikethrough digits align with
+ * the current-price digits visually (Hebrew text alignment + Latin
+ * digits otherwise look slightly off).
  */
 
 export function PlanSummaryCard({ plan }) {
   const { name, trialLabel, pricing } = plan;
-  const {
-    currency,
-    monthly,
-    monthlyOriginal,
-    annualTotal,
-    annualTotalOriginal,
-    monthlyLabel,
-    monthlySuffix,
-    totalLabel,
-  } = pricing;
 
   return (
     <div
       dir="rtl"
       className="bg-white rounded-[20px] border-2 border-brand-100 shadow-[0_8px_24px_rgba(80,20,60,0.10)] p-5 sm:p-6"
     >
-      {/* 1. Plan name + trial pill */}
-      <div className="flex items-center justify-between gap-3 pb-4 mb-4 border-b border-line">
-        <h3 className="text-lg sm:text-xl font-extrabold text-ink leading-tight">
-          {name}
-        </h3>
-        <span className="shrink-0 inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-700 whitespace-nowrap">
+      {/* Header — plan name + subtitle on right, green trial label on left */}
+      <div className="flex items-start justify-between gap-4 pb-4 border-b border-line">
+        <div className="text-right">
+          <p className="text-base font-extrabold text-ink leading-tight">{name}</p>
+          <p className="text-xs text-ink-muted mt-1">{trialLabel}</p>
+        </div>
+        <p className="text-base font-extrabold text-emerald-500 leading-tight pt-0.5 whitespace-nowrap">
           {trialLabel}
-        </span>
+        </p>
       </div>
 
-      {/* 2. Monthly price block — the headline element */}
-      <div className="space-y-1.5">
-        <p className="text-xs sm:text-sm text-ink-muted">{monthlyLabel}</p>
-        <div className="flex items-baseline gap-2.5">
-          <span className="text-3xl sm:text-4xl font-extrabold text-emerald-600 leading-none tabular-nums">
-            {monthly}{currency}
+      {/* Price rows — stacked, right-aligned, compact */}
+      <div className="pt-4 space-y-1 text-right">
+        <p className="text-sm leading-snug">
+          <span className="text-ink-muted">{pricing.monthlyLabel} </span>
+          <span className="text-emerald-500 font-extrabold tabular-nums">
+            {pricing.monthly}{pricing.currency}
           </span>
-          <span className="text-base text-ink-muted line-through tabular-nums">
-            {monthlyOriginal}{currency}
+          <span className="text-ink-muted line-through ms-1 tabular-nums">
+            {pricing.monthlyOriginal}{pricing.currency}
           </span>
-        </div>
-        <p className="text-xs text-ink-muted">{monthlySuffix}</p>
-      </div>
-
-      {/* 3. Annual total — separated by a divider */}
-      <div className="mt-5 pt-4 border-t border-line">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="text-sm font-medium text-ink-muted">{totalLabel}</span>
-          <div className="flex items-baseline gap-2">
-            <span className="text-lg font-extrabold text-ink tabular-nums">
-              {annualTotal}{currency}
-            </span>
-            <span className="text-sm text-ink-muted line-through tabular-nums">
-              {annualTotalOriginal.toLocaleString('en-US')}{currency}
-            </span>
-          </div>
-        </div>
+          <span className="text-ink-muted"> {pricing.monthlySuffix}</span>
+        </p>
+        <p className="text-xs text-ink-muted whitespace-nowrap">
+          (
+          <span className="text-emerald-500 font-bold tabular-nums">
+            {pricing.annualTotal}{pricing.currency}
+          </span>
+          <span className="line-through ms-1 tabular-nums">
+            {pricing.annualTotalOriginal.toLocaleString('en-US')}{pricing.currency}
+          </span>
+          {' '}{pricing.totalLabel})
+        </p>
       </div>
     </div>
   );
