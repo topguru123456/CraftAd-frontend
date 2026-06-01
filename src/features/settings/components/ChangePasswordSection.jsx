@@ -9,7 +9,13 @@ import { changePasswordSchema } from '../schemas/account.schema';
 import { SettingsSection } from './SettingsSection';
 import { FieldLabelSpacer, SettingsSaveButton } from './SettingsSaveButton';
 
-const INPUT_ROW = 'h-12';
+/* Height of inputs + the submit button in this section's horizontal row.
+ * Matches the app-wide standard input height (50px) set on the .input
+ * class in globals.css. The button needs the same height because they
+ * sit side-by-side in a flex row; without coupling them, the button
+ * would be ~54px (default .btn padding-derived height) and the row
+ * would look misaligned. */
+const INPUT_ROW = 'h-[50px]';
 
 function SettingsField({ label, children, error }) {
   return (
@@ -90,7 +96,7 @@ export function ChangePasswordSection() {
               type="submit"
               loading={isSubmitting}
               disabled={!canSubmit}
-              className={cn('w-full', INPUT_ROW, '!min-h-0 !h-12 self-auto')}
+              className={cn('w-full', INPUT_ROW, '!min-h-0 !h-[50px] self-auto')}
             >
               אישור ושינוי סיסמה
             </SettingsSaveButton>
