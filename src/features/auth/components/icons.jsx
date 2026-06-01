@@ -1,39 +1,23 @@
-export function MailIcon({ className = 'text-brand-500', size = 18 }) {
-  return (
-    <svg
-      className={className}
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="5" width="18" height="14" rx="2.5" />
-      <path d="M3 7l9 6 9-6" />
-    </svg>
-  );
+import MailSvg from '@assets/icons/auth/email.svg?react';
+import LockSvg from '@assets/icons/auth/lock.svg?react';
+
+/* Auth form field icons — sourced from the Figma design system.
+ *
+ * The SVG files carry their own stroke colors (#F98FB3 with selective
+ * opacity for visual hierarchy) baked in, so the icons render the
+ * exact pink the designer specified regardless of the surrounding
+ * `text-*` color on the Input's icon slot. That's intentional: Figma
+ * keeps the icon color stable across normal/error states; the
+ * surrounding Input border turns red on invalid, which is enough
+ * error signaling without recoloring the icon itself.
+ *
+ * Default size = 20 matches the native viewBox the designer drew at.
+ * Passing a different size scales proportionally. */
+
+export function MailIcon({ className, size = 20 }) {
+  return <MailSvg className={className} width={size} height={size} aria-hidden="true" />;
 }
 
-export function LockIcon({ className = 'text-brand-500', size = 18 }) {
-  return (
-    <svg
-      className={className}
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="4" y="11" width="16" height="10" rx="2.5" />
-      <path d="M8 11V7a4 4 0 1 1 8 0v4" />
-    </svg>
-  );
+export function LockIcon({ className, size = 20 }) {
+  return <LockSvg className={className} width={size} height={size} aria-hidden="true" />;
 }
