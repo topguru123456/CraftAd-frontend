@@ -17,7 +17,7 @@ export function SignUpForm({ onSubmit, onGoogleSignIn, serverError, confirmation
   if (confirmationSent) {
     return (
       <div className="space-y-5 text-right" dir="rtl">
-        <h1 className="text-[28px] sm:text-3xl font-extrabold leading-[1.2] text-ink">
+        <h1 className="text-2xl sm:text-[28px] font-extrabold leading-[1.2] text-ink">
           בדקו את האימייל שלכם
         </h1>
         <p className="text-ink-muted leading-relaxed">
@@ -34,7 +34,7 @@ export function SignUpForm({ onSubmit, onGoogleSignIn, serverError, confirmation
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
       <header className="text-right">
-        <h1 className="text-[28px] sm:text-3xl font-extrabold leading-[1.2] text-ink">
+        <h1 className="text-2xl sm:text-[28px] font-extrabold leading-[1.2] text-ink">
           הירשמו לניסיון וקבלו<br />10 קריאייטיבים במתנה!
         </h1>
       </header>

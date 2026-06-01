@@ -12,16 +12,20 @@ export function OnboardingLayout({ children, canGoNext, onNext }) {
   return (
     <div className="min-h-screen w-full bg-brand-500">
       <div className="min-h-screen flex" dir="rtl">
-        <main className="w-full lg:w-[clamp(380px,36vw,560px)] lg:shrink-0 bg-white flex flex-col px-6 sm:px-10 lg:px-12 py-10 lg:py-12 min-h-screen">
+        {/* 50/50 column split at lg+ — matches AuthLayout. The
+            clamp-based formula here previously gave the form only ~37%
+            on common 1024-1366px laptops which felt compressed with
+            the radio-card option lists. */}
+        <main className="w-full lg:w-1/2 lg:shrink-0 bg-white flex flex-col px-6 sm:px-10 lg:px-12 py-10 lg:py-12 min-h-screen">
           <ProgressBar currentStep={currentStep} />
 
           <div className="flex flex-col py-10">
-            <div className="w-full max-w-[clamp(320px,28vw,440px)] mx-auto animate-fade-in">
+            <div className="w-full max-w-[480px] mx-auto animate-fade-in">
               {children}
             </div>
           </div>
 
-          <div className="mt-auto w-full max-w-[clamp(320px,28vw,440px)] mx-auto">
+          <div className="mt-auto w-full max-w-[480px] mx-auto">
             <NavigationFooter
               onNext={handleNext}
               onBack={back}

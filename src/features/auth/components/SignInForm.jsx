@@ -17,7 +17,7 @@ export function SignInForm({ onSubmit, onGoogleSignIn, serverError }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
       <header className="text-right space-y-2">
-        <h1 className="text-[28px] sm:text-3xl font-extrabold leading-[1.2] text-ink">
+        <h1 className="text-2xl sm:text-[28px] font-extrabold leading-[1.2] text-ink">
           ברוכים השבים,
         </h1>
         <p className="text-ink-muted">התחברו כדי להתחיל</p>
