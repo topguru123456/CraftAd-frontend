@@ -35,6 +35,7 @@ import { cn } from '@lib/cn';
 const LottiePlayer = lazy(() => import('lottie-react'));
 
 const HOVER_GRACE_MS = 60;
+const DEFAULT_LOTTIE_SPEED = 0.65;
 
 export function LottieIcon({
   loader,
@@ -42,6 +43,7 @@ export function LottieIcon({
   className,
   playMode = 'always',
   isActive = false,
+  speed = DEFAULT_LOTTIE_SPEED,
 }) {
   const [data, setData] = useState(animationData ?? null);
 
@@ -91,13 +93,18 @@ export function LottieIcon({
         className={className}
         playMode={playMode}
         isActive={isActive}
+        speed={speed}
       />
     </Suspense>
   );
 }
 
-function LottiePlayerInner({ animationData, className, playMode, isActive }) {
+function LottiePlayerInner({ animationData, className, playMode, isActive, speed }) {
   const lottieRef = useRef(null);
+
+  useEffect(() => {
+    lottieRef.current?.setSpeed(speed);
+  }, [speed]);
 
   /* For playMode='on-hover': drive play/pause via the player ref off the
    * isActive prop. A tiny grace window prevents rapid flicker when the
