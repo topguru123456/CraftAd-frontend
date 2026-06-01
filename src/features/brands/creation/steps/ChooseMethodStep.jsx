@@ -8,6 +8,35 @@ import { cn } from '@lib/cn';
 import { BrandsHeader } from '../../components/BrandsHeader';
 import { useBrandCreation } from '../context/BrandCreationContext';
 
+/* QA-approved copy for any invalid URL/domain input. Keep verbatim
+ * — design + product agreed on this exact phrasing. */
+const INVALID_URL_MESSAGE = 'כתובת האתר אינה תקינה. אנא הזינו כתובת URL חוקית.';
+
+/* Domain-shape regex: at least one dot, alphanumeric labels with
+ * optional hyphens (RFC 1035-style, max 63 chars per label), TLD must
+ * be 2+ letters. Used as a check on the parsed `URL.hostname`, not on
+ * the raw input — the URL constructor handles protocols / paths /
+ * ports / queries for us; this regex rejects things URL() happily
+ * accepts but aren't real public domains (e.g. `notarealhost`,
+ * `192.168.1.1`, `localhost`). */
+const DOMAIN_HOSTNAME_RE = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
+
+function isValidWebsiteUrl(input) {
+  const trimmed = input.trim();
+  if (!trimmed) return false;
+  /* Accept bare domains (`craftad.ai`) and fully-qualified URLs
+   * (`https://craftad.ai/about`). If no protocol, prepend https:// so
+   * the URL constructor can parse the hostname out. */
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const u = new URL(withProtocol);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    return DOMAIN_HOSTNAME_RE.test(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
 /* Step 0 — choose creation method.
  *
  * Two cards: auto (paste a URL we can scrape) or manual (4-step wizard).
@@ -25,14 +54,29 @@ import { useBrandCreation } from '../context/BrandCreationContext';
 export function ChooseMethodStep() {
   const { startAuto, startManual, cancel, isFetching } = useBrandCreation();
   const [url, setUrl] = useState('');
+  /* Inline error displayed under the input when client-side URL
+   * validation fails. Cleared when the user starts typing again. */
+  const [urlError, setUrlError] = useState(null);
+
+  const handleUrlChange = (next) => {
+    setUrl(next);
+    if (urlError) setUrlError(null);
+  };
 
   const handleUrlSubmit = (event) => {
     event.preventDefault();
     const trimmed = url.trim();
     if (!trimmed) return;
+    if (!isValidWebsiteUrl(trimmed)) {
+      setUrlError(INVALID_URL_MESSAGE);
+      return;
+    }
+    setUrlError(null);
     /* AutoFetchModal opens (driven by context isFetching), runs the
        scrape, prefills draft, and the wizard advances to the identity
-       step on success. */
+       step on success. Server-side failures are wrapped to Hebrew by
+       BrandCreationContext.startAuto, so the AutoFetchModal ErrorState
+       never displays raw apiClient transport messages. */
     startAuto(trimmed);
   };
 
@@ -55,8 +99,21 @@ export function ChooseMethodStep() {
           title="הקמה אוטומטית באמצעות קישור לאתר"
           description="אם יש למותג אתר קיים - אנחנו יכולים להקים לכם את המותג אוטומטית! תוכלו לשנות אחר כך מה שתרצו."
         >
-          <form onSubmit={handleUrlSubmit} className="w-full">
-            <UrlInput value={url} onChange={setUrl} />
+          <form onSubmit={handleUrlSubmit} className="w-full" noValidate>
+            <UrlInput
+              value={url}
+              onChange={handleUrlChange}
+              hasError={Boolean(urlError)}
+            />
+            {urlError && (
+              <p
+                className="mt-2 text-sm font-medium text-danger text-right"
+                role="alert"
+                aria-live="polite"
+              >
+                {urlError}
+              </p>
+            )}
           </form>
         </ChoiceCard>
 
@@ -116,7 +173,7 @@ function Divider() {
   );
 }
 
-function UrlInput({ value, onChange }) {
+function UrlInput({ value, onChange, hasError }) {
   const hasValue = Boolean(value.trim());
   return (
     <div className="relative w-full">
@@ -128,10 +185,14 @@ function UrlInput({ value, onChange }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="הזינו כתובת האתר, נגיד Craftad.ai"
+        aria-invalid={hasError || undefined}
         className={cn(
-          'w-full rounded-xl border border-brand-200 bg-white',
+          'w-full rounded-xl border bg-white',
           'ps-10 pe-[112px] py-3 text-sm text-ink placeholder:text-ink-soft',
-          'focus:border-brand-400 focus:outline-none focus:shadow-focus'
+          'focus:outline-none focus:shadow-focus',
+          hasError
+            ? 'border-danger focus:border-danger'
+            : 'border-brand-200 focus:border-brand-400'
         )}
       />
       <button

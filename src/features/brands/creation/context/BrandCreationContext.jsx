@@ -77,6 +77,24 @@ const EMPTY_DRAFT = Object.freeze({
   tone: null,
 });
 
+/* Generic Hebrew fallback for any brand-fetch backend failure that
+ * doesn't come back with a Hebrew-localized message of its own. */
+const FETCH_FALLBACK_MESSAGE =
+  'לא הצלחנו לאסוף את פרטי המותג. נסו שוב או עברו ליצירה ידנית.';
+
+/* Hebrew Unicode block — used to detect whether a server-returned
+ * message is already localized. If it contains any Hebrew character we
+ * trust it as user-facing; otherwise we substitute the fallback. */
+const HEBREW_CHAR_RE = /[֐-׿]/;
+
+function toUserFacingError(error) {
+  const message = typeof error?.message === 'string' ? error.message : '';
+  if (message && HEBREW_CHAR_RE.test(message)) {
+    return { message };
+  }
+  return { message: FETCH_FALLBACK_MESSAGE };
+}
+
 const BrandCreationContext = createContext(null);
 
 export function BrandCreationProvider({ onCancel, onComplete, children }) {
@@ -145,7 +163,14 @@ export function BrandCreationProvider({ onCancel, onComplete, children }) {
    * The normalized payload from `brandsApi.fetchFromUrl` already matches
    * the draft shape, so we spread it wholesale. The user's typed URL is
    * preserved separately as `websiteUrl` (the API's `domain` is the bare
-   * canonical form, not necessarily what the user pasted). */
+   * canonical form, not necessarily what the user pasted).
+   *
+   * Error sanitization: AutoFetchModal renders `error.message` verbatim.
+   * If the backend returns a Hebrew message we keep it (signal — e.g.
+   * "the website returned 404"); but apiClient's generic transport
+   * fallbacks (`Request failed (500)`, `Network error`) are technical
+   * strings that shouldn't reach the user. `toUserFacingError` collapses
+   * any non-Hebrew message into the controlled Hebrew fallback. */
   const startAuto = useCallback(
     async (url) => {
       setFlow('auto');
@@ -157,8 +182,9 @@ export function BrandCreationProvider({ onCancel, onComplete, children }) {
       setIsFetching(false);
 
       if (error) {
-        setFetchError(error);
-        return { error };
+        const safe = toUserFacingError(error);
+        setFetchError(safe);
+        return { error: safe };
       }
 
       updateDraft({ ...data, websiteUrl: url });
