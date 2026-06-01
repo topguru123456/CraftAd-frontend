@@ -1,15 +1,20 @@
 import { OnboardingLayout } from '../components/OnboardingLayout';
 import { RadioCardGroup } from '../components/RadioCardGroup';
 import { OtherDetailsInput } from '../components/OtherDetailsInput';
-import { AgentIcon, BriefcaseIcon, LightbulbIcon, PuzzleIcon } from '../components/StepIcons';
+import {
+  RoleAgencyIcon,
+  RoleCompanyIcon,
+  RoleMarketingIcon,
+  OtherIcon,
+} from '../components/StepIcons';
 import { useOnboarding } from '../context/OnboardingContext';
 import { isStepComplete } from '../schemas/onboarding.schema';
 
 const ROLE_OPTIONS = [
-  { value: 'agency',   label: 'סוכנות שיווק',          icon: AgentIcon },
-  { value: 'business', label: 'בעל עסק/חברה',          icon: BriefcaseIcon },
-  { value: 'team',     label: 'צוות שיווק בארגון',     icon: LightbulbIcon },
-  { value: 'other',    label: 'אחר',                    icon: PuzzleIcon },
+  { value: 'agency',   label: 'סוכנות שיווק',          icon: RoleAgencyIcon },
+  { value: 'business', label: 'בעל עסק/חברה',          icon: RoleCompanyIcon },
+  { value: 'team',     label: 'צוות שיווק בארגון',     icon: RoleMarketingIcon },
+  { value: 'other',    label: 'אחר',                    icon: OtherIcon },
 ];
 
 export function Step1Role() {

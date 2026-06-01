@@ -1,18 +1,18 @@
 import { OnboardingLayout } from '../components/OnboardingLayout';
 import { RadioCardGroup } from '../components/RadioCardGroup';
 import {
-  SinglePersonIcon,
-  SmallTeamIcon,
-  MediumTeamIcon,
-  TeamGridIcon,
+  SizeAloneIcon,
+  Size2to5Icon,
+  Size6to15Icon,
+  SizeOver15Icon,
 } from '../components/StepIcons';
 import { useOnboarding } from '../context/OnboardingContext';
 
 const TEAM_SIZE_OPTIONS = [
-  { value: 'solo',   label: 'זה רק אני',     icon: SinglePersonIcon },
-  { value: 'small',  label: '2-5 עובדים',    icon: SmallTeamIcon },
-  { value: 'medium', label: '6-15 עובדים',   icon: MediumTeamIcon },
-  { value: 'large',  label: 'מעל 15 עובדים', icon: TeamGridIcon },
+  { value: 'solo',   label: 'זה רק אני',     icon: SizeAloneIcon },
+  { value: 'small',  label: '2-5 עובדים',    icon: Size2to5Icon },
+  { value: 'medium', label: '6-15 עובדים',   icon: Size6to15Icon },
+  { value: 'large',  label: 'מעל 15 עובדים', icon: SizeOver15Icon },
 ];
 
 export function Step4TeamSize() {

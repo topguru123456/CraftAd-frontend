@@ -40,13 +40,11 @@ function RadioCard({ name, option, selected, onSelect }) {
         className="sr-only"
       />
 
-      <span
-        className={cn(
-          'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors duration-150',
-          selected ? 'bg-brand-gradient text-white' : 'bg-brand-50 text-brand-500'
-        )}
-      >
-        {Icon ? <Icon /> : null}
+      {/* Icon — the Figma SVGs render their own gradient + drop-shadow
+          rounded-square treatment, so no wrapper bg/color override.
+          The `selected` prop swaps to the selected-variant SVG. */}
+      <span className="inline-flex shrink-0 items-center justify-center">
+        {Icon ? <Icon selected={selected} /> : null}
       </span>
 
       <span className="flex-1 text-right text-lg font-normal text-ink">

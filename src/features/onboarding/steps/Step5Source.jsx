@@ -2,21 +2,21 @@ import { OnboardingLayout } from '../components/OnboardingLayout';
 import { RadioCardGroup } from '../components/RadioCardGroup';
 import { OtherDetailsInput } from '../components/OtherDetailsInput';
 import {
-  MessageIcon,
-  FacebookIcon,
-  GoogleIcon,
-  PlayBoxIcon,
-  PuzzleIcon,
+  SourceFriendIcon,
+  SourceAdIcon,
+  SourceGoogleIcon,
+  SourceFacebookIcon,
+  OtherIcon,
 } from '../components/StepIcons';
 import { useOnboarding } from '../context/OnboardingContext';
 import { isStepComplete } from '../schemas/onboarding.schema';
 
 const SOURCE_OPTIONS = [
-  { value: 'friend',  label: 'המלצה מחבר/ה',   icon: MessageIcon },
-  { value: 'ad',      label: 'מודעה ממומנת',   icon: FacebookIcon },
-  { value: 'google',  label: 'חיפשתי בגוגל',    icon: GoogleIcon },
-  { value: 'fbGroup', label: 'קבוצת פייסבוק',  icon: PlayBoxIcon },
-  { value: 'other',   label: 'אחר',             icon: PuzzleIcon },
+  { value: 'friend',  label: 'המלצה מחבר/ה',   icon: SourceFriendIcon },
+  { value: 'ad',      label: 'מודעה ממומנת',   icon: SourceAdIcon },
+  { value: 'google',  label: 'חיפשתי בגוגל',    icon: SourceGoogleIcon },
+  { value: 'fbGroup', label: 'קבוצת פייסבוק',  icon: SourceFacebookIcon },
+  { value: 'other',   label: 'אחר',             icon: OtherIcon },
 ];
 
 export function Step5Source() {

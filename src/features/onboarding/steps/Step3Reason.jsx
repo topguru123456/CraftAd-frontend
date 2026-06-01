@@ -1,15 +1,20 @@
 import { OnboardingLayout } from '../components/OnboardingLayout';
 import { RadioCardGroup } from '../components/RadioCardGroup';
 import { OtherDetailsInput } from '../components/OtherDetailsInput';
-import { FootprintsIcon, RocketIcon, SparklesIcon, PuzzleIcon } from '../components/StepIcons';
+import {
+  ReasonTimeIcon,
+  ReasonPerformanceIcon,
+  ReasonQualityIcon,
+  OtherIcon,
+} from '../components/StepIcons';
 import { useOnboarding } from '../context/OnboardingContext';
 import { isStepComplete } from '../schemas/onboarding.schema';
 
 const REASON_OPTIONS = [
-  { value: 'time',        label: 'לחסוך זמן',                  icon: FootprintsIcon },
-  { value: 'performance', label: 'לשפר את ביצועי הקמפיינים',   icon: RocketIcon },
-  { value: 'quality',     label: 'לשפר את איכות התוצרים',      icon: SparklesIcon },
-  { value: 'other',       label: 'אחר',                         icon: PuzzleIcon },
+  { value: 'time',        label: 'לחסוך זמן',                  icon: ReasonTimeIcon },
+  { value: 'performance', label: 'לשפר את ביצועי הקמפיינים',   icon: ReasonPerformanceIcon },
+  { value: 'quality',     label: 'לשפר את איכות התוצרים',      icon: ReasonQualityIcon },
+  { value: 'other',       label: 'אחר',                         icon: OtherIcon },
 ];
 
 export function Step3Reason() {

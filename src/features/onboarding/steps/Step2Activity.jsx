@@ -1,15 +1,20 @@
 import { OnboardingLayout } from '../components/OnboardingLayout';
 import { RadioCardGroup } from '../components/RadioCardGroup';
 import { OtherDetailsInput } from '../components/OtherDetailsInput';
-import { LeafIcon, EcommerceIcon, CloudIcon, PuzzleIcon } from '../components/StepIcons';
+import {
+  ActivityServicesIcon,
+  ActivityEcommerceIcon,
+  ActivitySaasIcon,
+  OtherIcon,
+} from '../components/StepIcons';
 import { useOnboarding } from '../context/OnboardingContext';
 import { isStepComplete } from '../schemas/onboarding.schema';
 
 const ACTIVITY_OPTIONS = [
-  { value: 'services',  label: 'שירותים',           icon: LeafIcon },
-  { value: 'ecommerce', label: 'איקומרס',           icon: EcommerceIcon },
-  { value: 'saas',      label: 'מוצר דיגיטלי/SaaS', icon: CloudIcon },
-  { value: 'other',     label: 'אחר',                icon: PuzzleIcon },
+  { value: 'services',  label: 'שירותים',           icon: ActivityServicesIcon },
+  { value: 'ecommerce', label: 'איקומרס',           icon: ActivityEcommerceIcon },
+  { value: 'saas',      label: 'מוצר דיגיטלי/SaaS', icon: ActivitySaasIcon },
+  { value: 'other',     label: 'אחר',                icon: OtherIcon },
 ];
 
 export function Step2Activity() {
