@@ -35,7 +35,7 @@ import { cn } from '@lib/cn';
 const LottiePlayer = lazy(() => import('lottie-react'));
 
 const HOVER_GRACE_MS = 60;
-const DEFAULT_LOTTIE_SPEED = 0.65;
+const DEFAULT_LOTTIE_SPEED = 0.85;
 
 export function LottieIcon({
   loader,
