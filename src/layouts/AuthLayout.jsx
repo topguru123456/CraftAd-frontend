@@ -10,11 +10,11 @@ export default function AuthLayout() {
       style={{ backgroundImage: `url(${heroImage})` }}
     >
       <div className="min-h-screen flex" dir="rtl">
-        {/* 50/50 column split at lg+ — the hero background image covers
-            the remaining 50% on the visual-left side. Previous
-            clamp(380px,36vw,560px) made the form column only ~37%
-            wide on common 1024-1366px laptops which felt compressed. */}
-        <main className="w-full lg:w-1/2 lg:shrink-0 bg-white flex items-center justify-center px-6 sm:px-10 lg:px-12 py-16 lg:py-10">
+        {/* 60/40 image-to-form split at lg+ per client direction — the
+            hero background image covers the visual-left 60%, the form
+            takes the visual-right 40% (lg:w-2/5). Previously 50/50,
+            originally clamp(380px,36vw,560px). */}
+        <main className="w-full lg:w-2/5 lg:shrink-0 bg-white flex items-center justify-center px-6 sm:px-10 lg:px-12 py-16 lg:py-10">
           <div className="w-full max-w-[480px] animate-fade-in">
             <div className="text-right mb-10">
               <Logo className="h-9" />
