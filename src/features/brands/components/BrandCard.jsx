@@ -3,26 +3,20 @@ import { ChevronDownIcon } from '@features/navigation';
 import { cn } from '@lib/cn';
 import { formatBrandDate } from '../lib/formatDate';
 
-/* Single brand card.
- *
- * Layout (top → bottom):
- *   - Gradient banner (decorative)
- *   - Square logo, half on banner / half on body, centered
- *   - Brand name (centered)
- *   - Stats rows (label on right / value on left in RTL)
- *   - "פרויקט חדש" outline button at the bottom
- *
- * Interactions:
- *   - The whole card is clickable → opens the brand drawer (TODO, wired later).
- *   - On hover, a delete button surfaces at the top-end (left in RTL).
- *     It stops propagation so deleting doesn't also fire the card click.
- *   - The "פרויקט חדש" footer button likewise stops propagation.
- *
- * The delete button sits at `top-3 end-3`. `end-*` is RTL-aware: it lands
- * on the visual LEFT in dir=rtl (which is what the screenshot shows) and
- * automatically flips to the right in any future LTR context.
- */
+const FALLBACK_BANNER = 'linear-gradient(to right, rgb(241, 245, 249), rgb(203, 213, 225))';
+
+/* `1A` is 10% opacity in 8-digit hex — soft fade from a tinted light
+ * shade on the left to the full brand color on the right (where the
+ * logo plate sits). */
+function bannerStyle(brand) {
+  const hex = brand?.colors?.[0]?.hex;
+  if (typeof hex !== 'string' || !/^#[0-9a-f]{6}$/i.test(hex)) return FALLBACK_BANNER;
+  return `linear-gradient(to right, ${hex}1A, ${hex})`;
+}
+
 export function BrandCard({ brand, onOpen, onDelete, onCreateProject }) {
+  const needsAvatarSetup = brand.avatarCount === 0;
+
   const handleDeleteClick = (event) => {
     event.stopPropagation();
     onDelete?.(brand);
@@ -48,21 +42,23 @@ export function BrandCard({ brand, onOpen, onDelete, onCreateProject }) {
         'group relative flex flex-col bg-white border border-line rounded-2xl overflow-hidden',
         'shadow-soft transition-shadow duration-200',
         'hover:shadow-card focus-visible:shadow-card focus-visible:outline-none',
-        'cursor-pointer'
+        'cursor-pointer',
       )}
     >
-      {/* Decorative banner. The gradient fades from a soft slate to near-black,
-          giving the white logo plate something to sit against. */}
-      <div className="h-[110px] bg-gradient-to-l from-slate-200 via-slate-500 to-slate-900" />
+      <div className="h-[100px]" style={{ background: bannerStyle(brand) }} />
 
-      {/* Logo plate. Absolutely positioned so the body padding below stays
-          calm — the plate juts up into the banner by half its height. */}
-      <div className="-mt-12 flex justify-center">
-        <BrandLogo brand={brand} />
+      {/* In RTL flex-row, default justify-start lands children on the
+       * visual right. ms-6 = margin-inline-start = right-side margin in
+       * RTL, creating space between the logo cluster and the card edge. */}
+      <div className="-mt-12 flex">
+        <div className="ms-6 flex flex-col items-center">
+          <BrandLogo brand={brand} />
+          <h3 className="mt-3 text-xl font-extrabold text-ink whitespace-nowrap">
+            {brand.name}
+          </h3>
+        </div>
       </div>
 
-      {/* Hover-only delete control. Hidden by default, fades in on
-          group-hover or when focused. End-aligned in RTL = visual left. */}
       <button
         type="button"
         aria-label={`מחיקת המותג ${brand.name}`}
@@ -72,77 +68,58 @@ export function BrandCard({ brand, onOpen, onDelete, onCreateProject }) {
           'rounded-full bg-white/90 backdrop-blur-sm text-danger shadow-soft',
           'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
           'transition-opacity duration-150',
-          'hover:bg-white hover:text-danger'
+          'hover:bg-white hover:text-danger',
         )}
       >
         <Trash size="18" variant="Bold" color="currentColor" />
       </button>
 
-      {/* Body */}
-      <div className="px-5 pt-3 pb-5 flex flex-col gap-3" dir="rtl">
-        <h3 className="text-center text-lg font-extrabold text-ink">
-          {brand.name}
-        </h3>
+      <div className="px-5 pt-3 pb-5 flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-3 text-sm text-ink-muted">
+          <span>
+            כמות פרויקטים{' '}
+            <span className="font-bold text-ink">{brand.projectCount ?? 0}</span>
+          </span>
+          {needsAvatarSetup && (
+            <span className="inline-flex items-center rounded-full bg-brand-100 text-brand-500 text-xs font-medium px-3 py-1 whitespace-nowrap">
+              מומלץ להגדיר אווטארים
+            </span>
+          )}
+        </div>
+        <div className="text-sm text-ink-muted text-right">
+          תאריך שינוי אחרון:{' '}
+          <span className="font-bold text-ink">{formatBrandDate(brand.updatedAt)}</span>
+        </div>
 
-        <dl className="space-y-1.5 text-sm text-ink-muted">
-          <Row
-            label="כמות פרויקטים"
-            value={String(brand.projectCount ?? 0)}
-          />
-          <Row
-            label="תאריך שינוי אחרון"
-            value={formatBrandDate(brand.updatedAt)}
-          />
-        </dl>
-
+        {/* `self-end` in RTL flex-col = visual LEFT — button sits on the
+         * left edge of the card per the design. */}
         <button
           type="button"
           onClick={handleCreateClick}
           className={cn(
-            'mt-1 self-start inline-flex items-center gap-1.5',
+            'self-end mt-2 inline-flex items-center gap-1.5',
             'rounded-xl border border-line bg-white px-3 py-1.5',
             'text-sm font-bold text-ink',
-            'hover:border-brand-300 hover:bg-brand-50/50 transition-colors'
+            'hover:border-brand-300 hover:bg-brand-50/50 transition-colors',
           )}
         >
           <span>פרויקט חדש</span>
-          {/* Chevron points "forward" in RTL (visual left). Reusing the
-              navigation chevron keeps the icon vocabulary consistent. */}
-          <ChevronDownIcon className="h-4 w-4 -rotate-90 text-brand-500" />
+          <ChevronDownIcon className="h-4 w-4 -rotate-90 text-ink" />
         </button>
       </div>
     </article>
   );
 }
 
-/* Logo plate. Falls back to a colored initial chip when no logoUrl is set
- * — handy until brand creation flows through the real upload pipeline. */
 function BrandLogo({ brand }) {
   const initial = brand.name?.trim()?.[0]?.toUpperCase() ?? '?';
   return (
     <div className="h-20 w-20 rounded-2xl bg-white shadow-card border border-line p-2 flex items-center justify-center">
       {brand.logoUrl ? (
-        <img
-          src={brand.logoUrl}
-          alt={brand.name}
-          className="h-full w-full object-contain"
-        />
+        <img src={brand.logoUrl} alt={brand.name} className="h-full w-full object-contain" />
       ) : (
-        <span className="text-2xl font-extrabold text-brand-500">
-          {initial}
-        </span>
+        <span className="text-2xl font-extrabold text-brand-500">{initial}</span>
       )}
-    </div>
-  );
-}
-
-function Row({ label, value }) {
-  /* DOM order [label, value] → in RTL with justify-between, label lands on
-   * the right and value on the left. Reads as label-then-value in Hebrew. */
-  return (
-    <div className="flex items-center justify-between">
-      <dt>{label}</dt>
-      <dd className="font-bold text-ink">{value}</dd>
     </div>
   );
 }
