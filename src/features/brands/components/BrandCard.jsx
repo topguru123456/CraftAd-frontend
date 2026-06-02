@@ -15,7 +15,7 @@ function bannerStyle(brand) {
 }
 
 export function BrandCard({ brand, onOpen, onDelete, onCreateProject }) {
-  const needsAvatarSetup = brand.avatarCount === 0;
+  const needsAvatarSetup = !brand.avatarCount;
 
   const handleDeleteClick = (event) => {
     event.stopPropagation();
@@ -45,12 +45,9 @@ export function BrandCard({ brand, onOpen, onDelete, onCreateProject }) {
         'cursor-pointer',
       )}
     >
-      <div className="h-[100px]" style={{ background: bannerStyle(brand) }} />
+      <div className="h-[70px]" style={{ background: bannerStyle(brand) }} />
 
-      {/* In RTL flex-row, default justify-start lands children on the
-       * visual right. ms-6 = margin-inline-start = right-side margin in
-       * RTL, creating space between the logo cluster and the card edge. */}
-      <div className="-mt-12 flex">
+      <div className="-mt-10 flex">
         <div className="ms-6 flex flex-col items-center">
           <BrandLogo brand={brand} />
           <h3 className="mt-3 text-xl font-extrabold text-ink whitespace-nowrap">
@@ -86,26 +83,25 @@ export function BrandCard({ brand, onOpen, onDelete, onCreateProject }) {
             </span>
           )}
         </div>
-        <div className="text-sm text-ink-muted text-right">
-          תאריך שינוי אחרון:{' '}
-          <span className="font-bold text-ink">{formatBrandDate(brand.updatedAt)}</span>
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm text-ink-muted">
+            תאריך שינוי אחרון:{' '}
+            <span className="font-bold text-ink">{formatBrandDate(brand.updatedAt)}</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleCreateClick}
+            className={cn(
+              'inline-flex items-center gap-1.5',
+              'rounded-xl border border-line bg-white px-3 py-1.5',
+              'text-sm font-bold text-ink',
+              'hover:border-brand-300 hover:bg-brand-50/50 transition-colors',
+            )}
+          >
+            <span>פרויקט חדש</span>
+            <ChevronDownIcon className="h-4 w-4 rotate-90 text-ink" />
+          </button>
         </div>
-
-        {/* `self-end` in RTL flex-col = visual LEFT — button sits on the
-         * left edge of the card per the design. */}
-        <button
-          type="button"
-          onClick={handleCreateClick}
-          className={cn(
-            'self-end mt-2 inline-flex items-center gap-1.5',
-            'rounded-xl border border-line bg-white px-3 py-1.5',
-            'text-sm font-bold text-ink',
-            'hover:border-brand-300 hover:bg-brand-50/50 transition-colors',
-          )}
-        >
-          <span>פרויקט חדש</span>
-          <ChevronDownIcon className="h-4 w-4 -rotate-90 text-ink" />
-        </button>
       </div>
     </article>
   );
