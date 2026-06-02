@@ -48,7 +48,7 @@ export function BrandCard({ brand, onOpen, onDelete, onCreateProject }) {
       <div className="h-[70px]" style={{ background: bannerStyle(brand) }} />
 
       <div className="-mt-10 flex">
-        <div className="ms-6 flex flex-col items-center">
+        <div className="ms-6 flex flex-col items-start">
           <BrandLogo brand={brand} />
           <h3 className="mt-3 text-xl font-extrabold text-ink whitespace-nowrap">
             {brand.name}
@@ -72,7 +72,7 @@ export function BrandCard({ brand, onOpen, onDelete, onCreateProject }) {
       </button>
 
       <div className="px-5 pt-3 pb-5 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3 text-sm text-ink-muted">
+        <div className="flex items-center gap-2 text-sm text-ink-muted">
           <span>
             כמות פרויקטים{' '}
             <span className="font-bold text-ink">{brand.projectCount ?? 0}</span>
