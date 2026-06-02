@@ -88,7 +88,7 @@ export function VisualsStep() {
           <WizardStepper currentStepId={STEP_IDS.visuals} />
         </div>
 
-        <div className="space-y-8">
+        <div className="grid gap-8 lg:gap-10">
           <LogoSection logoUrl={logoUrl} onSelect={setLogo} onRemove={removeLogo} />
           <ColorsSection
             colors={colors}
@@ -114,8 +114,8 @@ function LogoSection({ logoUrl, onSelect, onRemove }) {
   const [error, setError] = useState(null);
 
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-bold text-ink-muted">
+    <div className="space-y-2 w-fit mx-auto sm:mx-0 sm:float-right">
+      <label className="block text-sm font-bold text-ink-muted text-center sm:text-start">
         לוגו (נדרש)
       </label>
 
@@ -132,11 +132,11 @@ function LogoSection({ logoUrl, onSelect, onRemove }) {
       )}
 
       {error && (
-        <p className="text-xs sm:text-sm text-danger" role="alert">
+        <p className="text-xs sm:text-sm text-danger text-center sm:text-start" role="alert">
           {error}
         </p>
       )}
-      <p className="text-xs sm:text-sm text-ink-muted">
+      <p className="text-xs sm:text-sm text-ink-muted text-center sm:text-start">
         העלו לוגו באיכות גבוהה, ללא רקע מאחוריו.
       </p>
     </div>
@@ -145,13 +145,13 @@ function LogoSection({ logoUrl, onSelect, onRemove }) {
 
 function LogoPreview({ url, onRemove }) {
   return (
-    <div className="relative bg-white border border-line rounded-2xl p-6 sm:p-8 flex items-center justify-center min-h-[180px]">
+    <div className="relative bg-white border-2 border-dashed border-line rounded-2xl py-0 px-12 sm:px-16 flex items-center justify-center min-h-[180px]">
       <button
         type="button"
         onClick={onRemove}
         aria-label="הסרת הלוגו"
         className={cn(
-          'absolute top-3 end-3 inline-flex h-8 w-8 items-center justify-center',
+          'absolute top-3 start-3 inline-flex h-8 w-8 items-center justify-center',
           'rounded-full text-danger hover:bg-rose-50 transition-colors'
         )}
       >
@@ -163,7 +163,7 @@ function LogoPreview({ url, onRemove }) {
       <img
         src={url}
         alt="לוגו המותג"
-        className="max-h-[160px] max-w-full object-contain"
+        className="max-h-[180px] max-w-full object-contain"
       />
     </div>
   );
@@ -239,16 +239,16 @@ function ColorsSection({ colors, onAdd, onRemove, onUpdate }) {
   const canRemove = colors.length > 1;
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 justify-center sm:justify-start">
         <label className="text-sm font-bold text-ink-muted">צבעי המותג</label>
         <InfoCircle size="16" variant="Linear" color="#8A98A6" />
       </div>
 
       {colors.length > 0 && (
-        <p className="text-xs text-ink-soft">צבע ראשי</p>
+        <p className="text-xs text-ink-soft text-center sm:text-start">צבע ראשי</p>
       )}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
         {colors.map((color) => (
           <ColorSwatch
             key={color.id}
@@ -294,14 +294,14 @@ function ColorSwatch({ color, canRemove, onRemove, onUpdate }) {
   const livePreview = normalizeHex(`#${inputValue}`) ?? color.hex;
 
   return (
-    <div className="relative">
+    <div className="relative border border-dotted border-line p-1.5 rounded-md">
       {canRemove && (
         <button
           type="button"
           onClick={onRemove}
           aria-label={`הסרת הצבע ${color.hex}`}
           className={cn(
-            'absolute -top-1.5 -end-1.5 z-10 inline-flex h-5 w-5 items-center justify-center',
+            'absolute -top-2 -start-2 z-10 inline-flex h-5 w-5 items-center justify-center',
             'rounded-full bg-rose-100 text-danger shadow-sm',
             'hover:bg-rose-200 transition-colors'
           )}
@@ -310,12 +310,11 @@ function ColorSwatch({ color, canRemove, onRemove, onUpdate }) {
         </button>
       )}
       <div
-        className="h-[72px] w-[120px] rounded-xl border border-line"
+        className="h-[72px] w-[100px] rounded-xl border border-line"
         style={{ backgroundColor: livePreview }}
         aria-hidden="true"
       />
       <div className="mt-1.5 flex items-center justify-center gap-1 text-xs text-ink-muted">
-        <span aria-hidden="true">#</span>
         <input
           type="text"
           value={inputValue}
@@ -335,6 +334,7 @@ function ColorSwatch({ color, canRemove, onRemove, onUpdate }) {
             'rounded outline-none focus:bg-white focus:ring-1 focus:ring-brand-300'
           )}
         />
+        <span aria-hidden="true">#</span>
       </div>
     </div>
   );
@@ -379,25 +379,26 @@ function AddColorButton({ onAdd }) {
   }, []);
 
   return (
-    <label
-      className={cn(
-        'relative h-[72px] w-[120px] rounded-xl border border-line bg-white',
-        'flex flex-col items-center justify-center gap-1',
-        'hover:border-brand-300 hover:bg-brand-50/30 transition-colors',
-        'cursor-pointer'
-      )}
-    >
-      {/* Paint-bucket asset ships with a pink gradient — render as-is. */}
-      <PaintBucket className="h-5 w-5" />
-      <span className="text-[11px] font-bold text-ink-muted">צבע נוסף</span>
-      <input
-        ref={inputRef}
-        type="color"
-        aria-label="הוספת צבע"
-        tabIndex={-1}
-        className="absolute inset-0 h-full w-full opacity-0 cursor-pointer"
-      />
-    </label>
+    <div className="relative border border-dotted border-line p-1.5 rounded-md hover:border-brand-300 transition-colors">
+      <label
+        className={cn(
+          'relative h-[94px] w-[100px] rounded-xl',
+          'flex flex-col items-center justify-center gap-1',
+          'cursor-pointer'
+        )}
+      >
+        {/* Paint-bucket asset ships with a pink gradient — render as-is. */}
+        <PaintBucket className="h-6 w-6" />
+        <span className="text-xs font-bold text-ink-muted">צבע נוסף</span>
+        <input
+          ref={inputRef}
+          type="color"
+          aria-label="הוספת צבע"
+          tabIndex={-1}
+          className="absolute inset-0 h-full w-full opacity-0 cursor-pointer"
+        />
+      </label>
+    </div>
   );
 }
 
