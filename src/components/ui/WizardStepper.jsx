@@ -12,7 +12,7 @@ export function WizardStepper({ steps, currentStepId, ariaLabel = 'שלבי תה
   const currentIndex = steps.findIndex((s) => s.id === currentStepId);
 
   return (
-    <nav aria-label={ariaLabel} dir="rtl" className="w-full sm:w-auto">
+    <nav aria-label={ariaLabel} dir="rtl" className="w-full">
       <ol className="flex sm:hidden items-center justify-center w-full max-w-xs mx-auto">
         {steps.map((step, idx) => {
           const isActive = step.id === currentStepId;
@@ -34,19 +34,18 @@ export function WizardStepper({ steps, currentStepId, ariaLabel = 'שלבי תה
         })}
       </ol>
 
-      <ul className="hidden sm:inline-flex items-center gap-1 rounded-full bg-rose-50/60 p-1">
+      <ul className="hidden sm:flex w-full items-center gap-1 rounded-full bg-slate-100 p-1">
         {steps.map((step, idx) => {
           const isActive = step.id === currentStepId;
           return (
-            <li key={step.id}>
+            <li key={step.id} className="flex-1">
               <span
                 aria-current={isActive ? 'step' : undefined}
                 className={cn(
-                  'inline-flex items-center justify-center whitespace-nowrap',
-                  'px-5 py-2 rounded-full text-md font-bold transition-colors',
-                  isActive
-                    ? 'bg-white text-brand-500 shadow-sm'
-                    : 'text-ink-muted',
+                  'flex w-full items-center justify-center whitespace-nowrap',
+                  'px-5 py-0.5 rounded-full text-base font-bold transition-colors',
+                  'text-red-800',
+                  isActive ? 'shadow-sm bg-white' : 'text-gray-300',
                 )}
               >
                 {idx + 1}. {step.label}
