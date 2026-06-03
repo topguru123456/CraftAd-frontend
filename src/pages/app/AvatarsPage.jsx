@@ -16,6 +16,15 @@ import { AvatarEditModal } from '@features/avatars/components/AvatarEditModal';
  * renders inline at the top with a spinner so the user has
  * something to watch while the AI works.
  *
+ * Auto-create catch-up:
+ *   New brands kick off an automatic avatar pipeline server-side
+ *   (BrandsService.create). If the user navigates here BEFORE that
+ *   pipeline lands, we poll the list silently every POLL_INTERVAL_MS
+ *   so the row + portrait appear without a manual refresh. The poll
+ *   self-terminates as soon as the list has at least one avatar and
+ *   every avatar has a non-null portraitUrl, OR we hit the attempt
+ *   cap (so a permanently-failed portrait doesn't poll forever).
+ *
  * Edit flow: click עריכה on a card → modal opens with all fields
  * → save PATCHes the row.
  *
@@ -28,6 +37,12 @@ import { AvatarEditModal } from '@features/avatars/components/AvatarEditModal';
  * Subscription model isn't in Prisma yet). When server-side
  * enforcement lands, the backend will reject and the page surfaces
  * the error inline; no FE change needed here. */
+
+/* Poll cadence for the auto-create catch-up loop. 5s × 16 = 80s
+ * total — covers worst-case GPT-4o (~10s) + Gemini (~30s) + a
+ * safety margin without hammering the API. */
+const POLL_INTERVAL_MS = 5000;
+const POLL_MAX_ATTEMPTS = 16;
 
 export default function AvatarsPage() {
   const { activeBrand } = useActiveBrand();
@@ -51,20 +66,53 @@ export default function AvatarsPage() {
       setLoading(false);
       return undefined;
     }
+
     let cancelled = false;
+    let pollTimer;
+    let pollAttempts = 0;
+
     setLoading(true);
     setLoadError(null);
+
+    /* Re-fetch one more time. Used by the auto-create catch-up loop
+     * — we don't flip `loading` because the gallery is already
+     * rendered (empty state or a portrait-pending card). Re-renders
+     * only when the data actually changes. */
+    const pollOnce = async () => {
+      if (cancelled) return;
+      pollAttempts += 1;
+      const { data, error } = await avatarsApi.listByBrand(brandId);
+      if (cancelled) return;
+      if (error || !Array.isArray(data)) return;
+      setAvatars(data);
+      if (shouldKeepPolling(data) && pollAttempts < POLL_MAX_ATTEMPTS) {
+        pollTimer = setTimeout(pollOnce, POLL_INTERVAL_MS);
+      }
+    };
+
     avatarsApi.listByBrand(brandId).then(({ data, error }) => {
       if (cancelled) return;
       if (error) {
         setLoadError(error.message ?? 'שגיאה בטעינת האווטארים');
         setAvatars([]);
-      } else {
-        setAvatars(data ?? []);
+        setLoading(false);
+        return;
       }
+      const list = data ?? [];
+      setAvatars(list);
       setLoading(false);
+      /* Brand-create auto-fires an avatar pipeline server-side. If we
+       * land here before it finishes, poll silently so the avatar
+       * appears without the user having to refresh. */
+      if (shouldKeepPolling(list)) {
+        pollTimer = setTimeout(pollOnce, POLL_INTERVAL_MS);
+      }
     });
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+      if (pollTimer) clearTimeout(pollTimer);
+    };
   }, [brandId, reloadToken]);
 
   const handleCreate = useCallback(async () => {
@@ -316,4 +364,18 @@ function ErrorPanel({ message, onRetry }) {
       </button>
     </div>
   );
+}
+
+/* True while the list isn't in a "settled" state we can stop polling
+ * for. Two cases keep us polling:
+ *   - empty list  → the auto-create pipeline hasn't produced a row yet
+ *                   (GPT-4o stage still running).
+ *   - any avatar with a null portraitUrl → row landed but Gemini is
+ *                   still processing (or failed silently — the cap
+ *                   on POLL_MAX_ATTEMPTS prevents that from polling
+ *                   forever). */
+function shouldKeepPolling(list) {
+  if (!Array.isArray(list)) return false;
+  if (list.length === 0) return true;
+  return list.some((avatar) => !avatar?.portraitUrl);
 }
