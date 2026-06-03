@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FolderOpen, MagicStar, Trash } from 'iconsax-react';
-import { Modal } from '@components/ui';
+import { Drawer } from '@components/ui';
 import { cn } from '@lib/cn';
 import { creativeImagesApi } from '../api/creative-images.api';
 
@@ -130,14 +130,17 @@ export function AiGenerateModal({ open, onClose, onSelect }) {
   };
 
   return (
-    <Modal
+    <Drawer
       open={open}
       onClose={onClose}
-      size="xl"
       ariaLabel="יצירת תמונה עם AI"
-      panelClassName="bg-white"
+      /* Wider than the default drawer (760px on xl) because the body
+       * uses a 2-column reference + prompt grid on lg+. `overflow-hidden`
+       * overrides the drawer's panel-level scroll so the inner Header
+       * / scroll area / Footer column can manage its own scrolling. */
+      panelClassName="bg-white overflow-hidden sm:w-[640px] lg:w-[820px] xl:w-[940px]"
     >
-      <div dir="rtl" className="flex flex-col max-h-[90vh]">
+      <div dir="rtl" className="flex flex-col h-full">
         <Header />
 
         <div className="flex-1 overflow-y-auto scrollbar-brand px-5 sm:px-7 py-5 space-y-5">
@@ -188,7 +191,7 @@ export function AiGenerateModal({ open, onClose, onSelect }) {
           onClose={onClose}
         />
       </div>
-    </Modal>
+    </Drawer>
   );
 }
 

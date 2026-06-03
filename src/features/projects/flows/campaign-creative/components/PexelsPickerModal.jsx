@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SearchNormal1 } from 'iconsax-react';
-import { Modal } from '@components/ui';
+import { Drawer } from '@components/ui';
 import { cn } from '@lib/cn';
 import { creativeImagesApi } from '../api/creative-images.api';
 
@@ -131,14 +131,17 @@ export function PexelsPickerModal({ open, onClose, onSelect }) {
   };
 
   return (
-    <Modal
+    <Drawer
       open={open}
       onClose={onClose}
-      size="xl"
       ariaLabel="בחירה ממאגר התמונות"
-      panelClassName="bg-white"
+      /* Wider than the default drawer (760px on xl) so the 4-col results
+       * grid breathes. `overflow-hidden` overrides the drawer's panel-
+       * level scroll so the inner Header / SearchBar / results / Footer
+       * column owns its own scrolling. */
+      panelClassName="bg-white overflow-hidden sm:w-[640px] lg:w-[820px] xl:w-[940px]"
     >
-      <div dir="rtl" className="flex flex-col max-h-[85vh]">
+      <div dir="rtl" className="flex flex-col h-full">
         <Header />
 
         <SearchBar
@@ -194,7 +197,7 @@ export function PexelsPickerModal({ open, onClose, onSelect }) {
 
         <Footer />
       </div>
-    </Modal>
+    </Drawer>
   );
 }
 
