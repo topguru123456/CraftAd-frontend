@@ -8,7 +8,7 @@ export function JoinCommunityButton() {
       href={WHATSAPP_LINK}
       target="_blank"
       rel="noopener noreferrer"
-      className="w-full inline-flex items-center justify-start gap-2 rounded-xl bg-gradient-to-br from-[#5BE584] via-[#25D366] to-[#128C7E] text-white font-bold py-3 pr-3 shadow-[0_8px_18px_rgba(37,211,102,0.35)] hover:shadow-[0_10px_22px_rgba(37,211,102,0.45)] active:translate-y-[1px] transition-all"
+      className="w-full inline-flex items-center justify-start gap-2 rounded-xl bg-gradient-to-br from-[#5BE584] via-[#25D366] to-[#128C7E] text-white font-bold py-3 pr-3 shadow-[0_2px_8px_rgba(37,211,102,0.18)] hover:shadow-[0_4px_12px_rgba(37,211,102,0.28)] active:translate-y-[1px] transition-all"
     >
       {/* Icon-first matches the CreationCtaButton convention: in RTL the
           icon lands at the visual right (the "start" side), text to its left. */}

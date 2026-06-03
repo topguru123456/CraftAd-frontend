@@ -78,7 +78,14 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }) {
         <SidebarNav />
       </div>
 
-      <div className="px-4 pt-3 pb-2">
+      {/* Bottom-anchored utility section. `mt-auto` on the WhatsApp
+          wrapper consumes any remaining flex space above it, pushing
+          the CTA + active-brand + user-card cluster to the bottom of
+          the sidebar (matches the spec's "top nav, bottom utilities"
+          split). If the sidebar's total content overflows viewport
+          height, the parent's `overflow-y-auto` still scrolls — the
+          bottom cluster simply scrolls into view with the rest. */}
+      <div className="px-4 pt-3 pb-2 mt-auto">
         <JoinCommunityButton />
       </div>
 
