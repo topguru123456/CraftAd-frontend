@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import { Dropdown, SegmentedControl } from '@components/ui';
+import { SegmentedControl } from '@components/ui';
 import { cn } from '@lib/cn';
 import { CharCounter } from './CharCounter';
-import { BRAND_TONES } from '@features/brands';
+import { BRAND_TONES, TaxonomySelect } from '@features/brands';
 import { useActiveBrand } from '@/contexts/BrandsContext';
 import {
   AUDIENCE_TEMPERATURES,
@@ -62,11 +62,17 @@ export function OfferFeaturesForm({
 }) {
   const { activeBrand } = useActiveBrand();
 
+  /* Seed the multi-select from the active brand's tone the first time we
+   * mount with an empty selection. After that the field is user-owned —
+   * flipping back through wizard steps won't reset a deliberate change.
+   * Brand records still store a single tone string, so we wrap it as a
+   * one-element array to match the multi-select shape. */
   useEffect(() => {
-    if (!draft.offerToneId && activeBrand?.tone) {
-      updateDraft({ offerToneId: activeBrand.tone });
+    const current = draft.offerToneIds ?? [];
+    if (current.length === 0 && activeBrand?.tone) {
+      updateDraft({ offerToneIds: [activeBrand.tone] });
     }
-  }, [draft.offerToneId, activeBrand?.tone, updateDraft]);
+  }, [draft.offerToneIds, activeBrand?.tone, updateDraft]);
 
   return (
     <div className="space-y-6 sm:space-y-7">
@@ -107,11 +113,12 @@ export function OfferFeaturesForm({
         </Field>
 
         <Field label="טון המותג">
-          <Dropdown
+          <TaxonomySelect
+            mode="multi"
             options={BRAND_TONES}
-            value={draft.offerToneId}
-            onChange={(id) => updateDraft({ offerToneId: id })}
-            placeholder="בחרו טון"
+            value={draft.offerToneIds ?? []}
+            onChange={(ids) => updateDraft({ offerToneIds: ids })}
+            placeholder="בחרו טון (אפשר לבחור כמה)"
             ariaLabel="טון המותג"
           />
         </Field>

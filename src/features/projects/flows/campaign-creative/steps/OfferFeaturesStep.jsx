@@ -24,7 +24,7 @@ export function OfferFeaturesStep() {
     Boolean(draft.saleType) &&
     Boolean(draft.audienceType) &&
     Boolean(draft.itemName?.trim()) &&
-    Boolean(draft.offerToneId) &&
+    (draft.offerToneIds?.length ?? 0) > 0 &&
     Boolean(draft.brief?.trim());
 
   return (

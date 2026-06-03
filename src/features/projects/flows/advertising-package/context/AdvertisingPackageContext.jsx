@@ -101,10 +101,10 @@ const EMPTY_DRAFT = Object.freeze({
    * state. Topics is bundled into the same step (rendered below the
    * OfferFeaturesForm via TopicsField); current spec keeps it
    * OPTIONAL (no minimum chip count gates Continue). */
-  saleType: null,
-  audienceType: null,
+  saleType: 'product',
+  audienceType: 'cold',
   itemName: '',
-  offerToneId: null,
+  offerToneIds: [],
   brief: '',
   topics: [],
   /* Step 3 — chosen image source. Single-entry array (same shape as

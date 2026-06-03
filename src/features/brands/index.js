@@ -5,6 +5,7 @@ export { BrandCard } from './components/BrandCard';
 export { EmptyBrands } from './components/EmptyBrands';
 export { NoActiveBrandState } from './components/NoActiveBrandState';
 export { BrandDrawer } from './components/BrandDrawer';
+export { TaxonomySelect } from './components/TaxonomySelect';
 export { brandsApi } from './api/brands.api';
 export { formatBrandDate } from './lib/formatDate';
 

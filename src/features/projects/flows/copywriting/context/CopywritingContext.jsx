@@ -89,10 +89,10 @@ const EMPTY_DRAFT = Object.freeze({
   audienceId: null,
   /* Offer step — same intake as campaign-creative's OfferFeatures,
    * minus landingPageUrl (the copywriting form doesn't render it). */
-  saleType: null,
-  audienceType: null,
+  saleType: 'product',
+  audienceType: 'cold',
   itemName: '',
-  offerToneId: null,
+  offerToneIds: [],
   brief: '',
   /* Topics step — list of keywords/themes the AI should focus on.
    * Optional; empty list is a valid state. */
@@ -164,7 +164,7 @@ export function CopywritingProvider({ onCancel, onComplete, children }) {
         purpose_he:       getCampaignGoalLabel(draft.goalId),
         audience_display: getTargetAudienceLabel(draft.audienceId),
         platform:         PLATFORMS_BY_ID[draft.platformId]?.label ?? '',
-        primary_tone:     getToneLabel(draft.offerToneId),
+        primary_tone:     (draft.offerToneIds ?? []).map(getToneLabel).filter(Boolean).join(', '),
       },
     };
   }, [draft]);
