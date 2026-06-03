@@ -1,7 +1,35 @@
 import { Trash } from 'iconsax-react';
 import { cn } from '@lib/cn';
+import { LottieIcon } from '@components/ui';
 import { getProjectType } from '@features/projects/config/project-types.config';
 import EditIcon from '@assets/icons/edit.svg';
+
+/* Project list card.
+ *
+ * Layout (RTL):
+ *   - Top row: stacked-thumbnail (visual right) + type chip (left of it)
+ *   - Project name
+ *   - Brief / text-output preview (1–3 lines, truncated)
+ *   - Footer: edit/delete actions (visual right) + last-updated date (left)
+ *
+ * Thumbnail behavior:
+ *   - Image flows (campaign-creative / advertising-package / product-
+ *     images) layer up to MAX_STACK preview thumbnails BEHIND the type
+ *     icon. Each visible layer represents one "create" click — the
+ *     parent samples one image per dispatch batch via
+ *     pickPreviewFromVariants in service-type-output.js.
+ *   - Non-image flows (copywriting / video / stock-photos / etc.) just
+ *     show the type icon — no stack.
+ *   - The type icon is the project-types animated Lottie (paused unless
+ *     the card is hovered, via playMode='on-hover'); coming-soon types
+ *     and unknown ids fall back to the iconsax `Icon` exposed by the
+ *     catalogue. */
+
+const IMAGE_STACK_TYPES = new Set([
+  'campaign-creative',
+  'advertising-package',
+  'product-images',
+]);
 
 export function ProjectCard({ project, preview, onOpen, onEdit, onDelete }) {
   const name = (project.name ?? '').trim() || 'פרויקט ללא שם';
@@ -38,7 +66,12 @@ export function ProjectCard({ project, preview, onOpen, onEdit, onDelete }) {
       )}
     >
       <div className="flex items-start gap-3">
-        <Thumbnail preview={preview} Icon={meta?.Icon} alt={name} />
+        <Thumbnail
+          serviceType={project.serviceType}
+          preview={preview}
+          meta={meta}
+          alt={name}
+        />
         <span className="inline-flex items-center rounded-full px-2.5 py-1 bg-brand-50 text-brand-500 text-xs font-bold">
           {typeLabel}
         </span>
@@ -117,31 +150,112 @@ function IconButton({ icon, label, onClick, hoverClass }) {
   );
 }
 
-function Thumbnail({ preview, Icon, alt }) {
-  if (preview.kind === 'image' && preview.url) {
-    return <Tile src={preview.url} alt={alt} />;
-  }
-  if (preview.kind === 'video' && preview.posterUrl) {
-    return <Tile src={preview.posterUrl} alt={alt} />;
-  }
-  if (Icon) {
-    return (
-      <div className="relative shrink-0 w-14 h-14 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center">
-        <Icon className="h-8 w-8" />
+/* Small icon overlaid on top of an image stack that shares the same
+ * box. Icon and stack do NOT step apart horizontally — they occupy the
+ * same XY space; the icon (smaller, top-left) covers most of the stack
+ * and only the rotated corners of deeper stack layers peek out around
+ * it. Each layer rotates a further STACK_ROTATE_DEG counter-clockwise,
+ * so deeper layers fan their top-right corners up-and-out.
+ *
+ * Image URLs go through `supabaseRenderUrl` so the browser fetches an
+ * 80×80 transformed copy from Supabase Storage's render endpoint
+ * (Pro-plan feature) instead of the full-size watermarked creative.
+ * Cuts each thumbnail from MBs to a few KB. */
+const TILE = 80;              // stack tile size (also the container size when stacked)
+const ICON_SIZE = 56;         // small icon overlay
+const STACK_ROTATE_DEG = 12;  // rotation added per layer of depth
+
+function Thumbnail({ serviceType, preview, meta, alt }) {
+  const stackUrls =
+    IMAGE_STACK_TYPES.has(serviceType) && Array.isArray(preview?.urls)
+      ? preview.urls.slice(0, 3)
+      : [];
+
+  const Icon = meta?.Icon;
+  const animationLoader = meta?.animationLoader;
+  const hasStack = stackUrls.length > 0;
+
+  /* No stack → container is just the icon. With stack → container is
+   * the TILE size; rotated layers extend a few px past the edges but
+   * the parent flex gap absorbs that. */
+  const containerSize = hasStack ? TILE : ICON_SIZE;
+
+  return (
+    <div
+      className="relative shrink-0"
+      style={{ width: containerSize, height: containerSize }}
+    >
+      {/* Stack layers — all at left=0/top=0; deeper = more rotation.
+          Render deepest first so the closest (least-rotated) layer
+          paints on top of the others, covering them mostly except for
+          the rotated corners. */}
+      {stackUrls.map((url, idx) => {
+        // depth: 0 = closest (least rotation); larger = deeper
+        const depth = stackUrls.length - 1 - idx;
+        return (
+          <img
+            key={`${idx}-${url}`}
+            src={supabaseRenderUrl(url, TILE)}
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            width={TILE}
+            height={TILE}
+            className="absolute rounded-xl object-cover bg-white border-2 border-white shadow-[0_4px_10px_rgba(15,23,42,0.15)]"
+            style={{
+              width: TILE,
+              height: TILE,
+              left: 0,
+              top: 0,
+              transformOrigin: 'center',
+              // negative = counter-clockwise → top-right swings up-and-out
+              transform: `rotate(${depth * -STACK_ROTATE_DEG}deg)`,
+              zIndex: 10 + (stackUrls.length - depth),
+            }}
+          />
+        );
+      })}
+
+      {/* Icon overlay — smaller, pinned to top-left of the box so it
+          covers the closest stack layer's top-left and lets the
+          stack's rotated corners peek out around the bottom/right. */}
+      <div
+        className={cn(
+          'absolute left-0 bottom-0 rounded-xl',
+          'bg-white border border-line shadow-[0_2px_8px_rgba(15,23,42,0.08)]',
+          'flex items-center justify-center overflow-hidden',
+        )}
+        style={{ width: ICON_SIZE, height: ICON_SIZE, zIndex: 30 }}
+        aria-label={alt}
+      >
+        {animationLoader ? (
+          <LottieIcon
+            loader={animationLoader}
+            playMode="on-hover"
+            className="h-10 w-10"
+          />
+        ) : Icon ? (
+          <Icon className="h-7 w-7 text-brand-500" />
+        ) : (
+          <div className="w-7 h-7 rounded-md bg-brand-50 border border-brand-100" />
+        )}
       </div>
-    );
-  }
-  return <div className="relative shrink-0 w-14 h-14 rounded-lg bg-surface-muted border border-line" />;
+    </div>
+  );
 }
 
-function Tile({ src, alt }) {
-  return (
-    <img
-      src={src}
-      alt={alt}
-      className="relative shrink-0 w-14 h-14 rounded-lg object-cover border border-line bg-white"
-    />
-  );
+/* Rewrite a Supabase Storage public URL into the `render/image/public`
+ * endpoint so the CDN returns a resized + reencoded copy. Pro plan
+ * feature. Non-Supabase URLs (or strings that don't match the public-
+ * object shape) pass through unchanged so the card still works for
+ * any pasted external URL. */
+function supabaseRenderUrl(url, size = 96) {
+  if (typeof url !== 'string' || !url) return url;
+  const marker = '/storage/v1/object/public/';
+  if (!url.includes(marker)) return url;
+  const rendered = url.replace(marker, '/storage/v1/render/image/public/');
+  const sep = rendered.includes('?') ? '&' : '?';
+  return `${rendered}${sep}width=${size}&height=${size}&resize=cover&quality=80`;
 }
 
 function getPreviewText(preview, project, isTextOutput) {

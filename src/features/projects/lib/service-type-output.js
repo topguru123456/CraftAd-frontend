@@ -52,11 +52,25 @@ export async function fetchProjectVariants(serviceType, projectId) {
   return creativeGenerationsApi.listByProject(projectId);
 }
 
+/* Image flows dispatch in batches of VARIANTS_PER_CLICK. The project
+ * card's stacked-thumbnail visual wants one representative image per
+ * "create" click, not per variant — so we sample one ready variant per
+ * batch (cap at MAX_STACK so the visual stays legible). */
+const VARIANTS_PER_BATCH = 3;
+const MAX_STACK = 3;
+
 /* Build a preview descriptor from the variant list. Returns a
  * discriminated union the card can switch on:
- *   { kind: 'image', url: string | null }
+ *   { kind: 'image', url: string | null, urls: string[] }
  *   { kind: 'text',  text: string | null }
  *   { kind: 'video', posterUrl: string | null, videoUrl: string | null }
+ *
+ * `url`  — first ready image (back-compat for callers that still want a
+ *          single preview).
+ * `urls` — up to MAX_STACK ready images sampled at one per dispatch
+ *          batch, used by the project card's stacked thumbnail. Always
+ *          present (possibly empty) so callers don't need to null-check
+ *          before mapping.
  *
  * Caller decides how to render `null` slots (placeholder + type icon,
  * etc.). For video the `posterUrl` is what the card thumbnail uses;
@@ -80,6 +94,17 @@ export function pickPreviewFromVariants(serviceType, variants) {
     };
   }
 
-  const firstReady = list.find((v) => v.status === 'ready' && v.imageUrl);
-  return { kind: 'image', url: firstReady?.imageUrl ?? null };
+  // Image — keep all ready variants in order, then take one per batch
+  // (every Nth, where N = VARIANTS_PER_BATCH) so each visible stack
+  // layer corresponds to a separate "create" click.
+  const ready = list.filter((v) => v.status === 'ready' && v.imageUrl);
+  const urls = [];
+  for (let i = 0; i < ready.length && urls.length < MAX_STACK; i += VARIANTS_PER_BATCH) {
+    urls.push(ready[i].imageUrl);
+  }
+  return {
+    kind: 'image',
+    url: ready[0]?.imageUrl ?? null,
+    urls,
+  };
 }
