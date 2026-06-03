@@ -10,9 +10,9 @@ import { cn } from '@lib/cn';
 /* Phase 0 of the advertising-package flow — platform + aspect ratio.
  *
  * Hidden from the visible "1/2/3" stepper because both choices are
- * locked preconditions: an Instagram-9:16 brief and a Facebook-1:1
- * brief produce different downstream layouts, so flipping mid-form
- * would invalidate later inputs. Same UX contract as campaign-creative's
+ * locked preconditions: a Meta-9:16 brief and a TikTok-1:1 brief
+ * produce different downstream layouts, so flipping mid-form would
+ * invalidate later inputs. Same UX contract as campaign-creative's
  * ContentSizeStep — picking a platform auto-scrolls to the ratio
  * section so the user doesn't have to hunt for it.
  *

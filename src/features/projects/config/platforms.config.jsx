@@ -1,8 +1,8 @@
-import InstagramIcon from '@assets/icons/social/instagram.svg?react';
+import MetaIcon      from '@assets/icons/social/meta.svg?react';
+import TikTokIcon    from '@assets/icons/social/tiktok.svg?react';
 import TwitterIcon   from '@assets/icons/social/twitter.svg?react';
 import LinkedInIcon  from '@assets/icons/social/linkedin.svg?react';
 import PinterestIcon from '@assets/icons/social/pinterest.svg?react';
-import FacebookIcon  from '@assets/icons/social/facebook.svg?react';
 
 /* Social-platform catalogue.
  *
@@ -19,10 +19,10 @@ import FacebookIcon  from '@assets/icons/social/facebook.svg?react';
  * them as-is without color overrides. */
 
 export const PLATFORMS = Object.freeze([
+  { id: 'meta',      label: 'מטא',        Icon: MetaIcon      },
+  { id: 'tiktok',    label: 'טיקטוק',     Icon: TikTokIcon    },
   { id: 'linkedin',  label: 'לינקדאין',   Icon: LinkedInIcon  },
   { id: 'twitter',   label: 'X - טוויטר', Icon: TwitterIcon   },
-  { id: 'instagram', label: 'אינסטגרם',   Icon: InstagramIcon },
-  { id: 'facebook',  label: 'פייסבוק',    Icon: FacebookIcon  },
   { id: 'pinterest', label: 'פינטרסט',    Icon: PinterestIcon },
 ]);
 

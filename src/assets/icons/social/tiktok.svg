@@ -1,0 +1,9 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 6H35.2V41.6C35.2 45.1 32.4 47.9 28.9 47.9C25.4 47.9 22.6 45.1 22.6 41.6C22.6 38.1 25.4 35.3 28.9 35.3C29.6 35.3 30.3 35.4 31 35.7V26.7C30.3 26.6 29.6 26.5 28.9 26.5C20.5 26.5 13.7 33.3 13.7 41.7C13.7 50.1 20.5 56.9 28.9 56.9C37.3 56.9 44.1 50.1 44.1 41.7V22.8C47.6 25.2 51.9 26.6 56.4 26.6V17.6C56.4 17.6 51 17.8 47.1 13.9C44.6 11.5 44 8.4 44 6Z" fill="url(#paint0_linear_tiktok)"/>
+<defs>
+<linearGradient id="paint0_linear_tiktok" x1="65.03" y1="-11.85" x2="-3.98" y2="-10.9" gradientUnits="userSpaceOnUse">
+<stop stop-color="#ED5699"/>
+<stop offset="1" stop-color="#FF8586"/>
+</linearGradient>
+</defs>
+</svg>
