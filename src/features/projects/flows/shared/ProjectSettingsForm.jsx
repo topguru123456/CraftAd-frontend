@@ -41,7 +41,7 @@ export function ProjectSettingsForm({ draft, updateDraft }) {
           dir="rtl"
           className={cn(
             'w-full rounded-xl border-2 border-brand-300 bg-white',
-            'ps-12 pe-4 py-2.5 text-md text-ink placeholder:text-ink-soft text-right',
+            'px-4 py-2.5 text-md text-ink placeholder:text-ink-soft text-right',
             'focus:border-brand-500 focus:outline-none focus:shadow-focus'
           )}
         />

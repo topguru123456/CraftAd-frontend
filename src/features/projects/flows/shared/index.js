@@ -1,6 +1,7 @@
 export { ProjectWizardShell } from './ProjectWizardShell';
 export { ProjectWizardHeader } from './ProjectWizardHeader';
 export { ProjectWizardField } from './ProjectWizardField';
+export { CharCounter } from './CharCounter';
 export { ProjectSettingsForm } from './ProjectSettingsForm';
 export { OfferFeaturesForm } from './OfferFeaturesForm';
 export { TopicsField } from './TopicsField';

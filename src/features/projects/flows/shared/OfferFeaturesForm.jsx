@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Dropdown, SegmentedControl } from '@components/ui';
 import { cn } from '@lib/cn';
+import { CharCounter } from './CharCounter';
 import { BRAND_TONES } from '@features/brands';
 import { useActiveBrand } from '@/contexts/BrandsContext';
 import {
@@ -158,13 +159,10 @@ export function OfferFeaturesForm({
 }
 
 /* Local Field wrapper — same visual treatment as ProjectWizardField,
- * but with the counter rendered UNDERNEATH (`length / max`) instead of
- * an overlay badge. The two flavors live side-by-side because the
- * settings-form mock uses the overlay style and the offer-form mock
- * uses the underneath counter; merging them into one switchable field
- * isn't worth the prop noise for a 25-line component. `dir="ltr"` on
- * the counter span keeps "0 / 5000" reading correctly inside an RTL
- * paragraph (BiDi otherwise position-reverses the two number runs). */
+ * sharing the `CharCounter` helper-text so every wizard surface (project
+ * name, brief, topic, marketing primitives) signals the limit the same
+ * way. Kept local rather than imported because this Field doesn't share
+ * ProjectWizardField's other concerns (grid-col className passthrough). */
 function Field({ label, value, max, className, children }) {
   const showCounter = typeof max === 'number' && typeof value === 'string';
   const length = value?.length ?? 0;
@@ -174,19 +172,7 @@ function Field({ label, value, max, className, children }) {
         {label}
       </label>
       {children}
-      {showCounter && (
-        <div className="flex justify-end">
-          <span
-            dir="ltr"
-            className={cn(
-              'text-xs',
-              length >= max ? 'text-danger font-bold' : 'text-ink-soft'
-            )}
-          >
-            {length} / {max}
-          </span>
-        </div>
-      )}
+      {showCounter && <CharCounter length={length} max={max} />}
     </div>
   );
 }

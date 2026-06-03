@@ -1,10 +1,12 @@
 import { cn } from '@lib/cn';
+import { CharCounter } from './CharCounter';
 
 /* Label + control wrapper for project-creation wizards.
  *
- * Pass `value` + `max` to show an inline counter on the visual left
- * (RTL `start`) inside text inputs — matches the campaign-settings
- * mock. Dropdowns omit `value`/`max` and get no counter. */
+ * Pass `value` + `max` to render a helper-text counter below the field
+ * showing how many characters remain. Dropdowns omit `value`/`max` and
+ * get no counter. The counter sits below the input so it doesn't
+ * compete with the field's own padding or right-aligned RTL text. */
 export function ProjectWizardField({ label, value, max, className, children }) {
   const showCounter = typeof max === 'number';
   const length = typeof value === 'string' ? value.length : 0;
@@ -14,24 +16,8 @@ export function ProjectWizardField({ label, value, max, className, children }) {
       <label className="block text-[16px] font-bold text-ink-muted">
         {label}
       </label>
-      {showCounter ? (
-        <div className="relative">
-          {children}
-          <span
-            dir="ltr"
-            aria-hidden="true"
-            className={cn(
-              'pointer-events-none absolute top-1/2 -translate-y-1/2 start-3',
-              'text-sm tabular-nums',
-              length >= max ? 'text-danger font-bold' : 'text-ink-soft'
-            )}
-          >
-            {max}
-          </span>
-        </div>
-      ) : (
-        children
-      )}
+      {children}
+      {showCounter && <CharCounter length={length} max={max} />}
     </div>
   );
 }
