@@ -46,20 +46,22 @@ export function InspiredUploadSlot({
 
   return (
     <div className={cn('flex flex-col min-h-[280px]', className)}>
+      {/* Click + keyboard ALWAYS open the picker, including when the
+          slot also renders the separate "select from device" button
+          below. The device button is an extra discoverability hook,
+          NOT a replacement — the drop-zone area itself promises
+          "לחצו להחלפה" once a preview is loaded, and silently doing
+          nothing on click broke that promise on the product slot. */}
       <div
         role="button"
         tabIndex={0}
-        onClick={showDeviceButton ? undefined : openPicker}
-        onKeyDown={
-          showDeviceButton
-            ? undefined
-            : (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  openPicker();
-                }
-              }
-        }
+        onClick={openPicker}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openPicker();
+          }
+        }}
         onDragOver={(e) => {
           e.preventDefault();
           if (!disabled) setIsDragging(true);
@@ -80,7 +82,7 @@ export function InspiredUploadSlot({
           isDragging
             ? 'border-brand-400 bg-brand-50/50'
             : 'border-brand-200 bg-white hover:border-brand-300',
-          !showDeviceButton && !disabled && 'cursor-pointer',
+          !disabled && 'cursor-pointer',
           disabled && 'opacity-60 pointer-events-none',
         )}
       >
