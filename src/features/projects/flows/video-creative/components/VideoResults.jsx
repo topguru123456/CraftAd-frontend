@@ -123,17 +123,21 @@ function VideoCard({ variant, aspectRatio }) {
         {isReady ? (
           // `preload="metadata"` so we get the poster + duration without
           // downloading the full mp4 until the user presses play.
-          // `object-contain` (not `object-cover`) keeps the video's
-          // full frame even if Veo ships a slightly different ratio
-          // than the container. `bg-black` fills any letterbox gap
-          // so it reads as intentional.
+          // `object-cover` (not `object-contain`) crops away the edge
+          // padding Veo tends to bake into its outputs. The image
+          // path uses `object-contain` because images suffer from
+          // requested-vs-returned ratio drift; Veo videos don't have
+          // that pattern — they almost always come back at the
+          // requested ratio but with a centered subject inside
+          // their own internal margin, so cropping fills the frame
+          // without losing meaningful pixels.
           <video
             src={variant.videoUrl}
             poster={variant.posterUrl ?? undefined}
             controls
             preload="metadata"
             playsInline
-            className="absolute inset-0 w-full h-full object-contain bg-black"
+            className="absolute inset-0 w-full h-full object-cover bg-black"
           />
         ) : isFailed ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
