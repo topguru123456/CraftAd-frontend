@@ -41,7 +41,7 @@ function hasInflight(variants) {
   );
 }
 
-export function useVideoVariants({ projectId, enabled }) {
+export function useVideoVariants({ projectId, enabled, onFailure }) {
   const [variants, setVariants] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -58,6 +58,34 @@ export function useVideoVariants({ projectId, enabled }) {
    * setInterval on every state update. */
   const pollRef = useRef(null);
 
+  /* Latest onFailure stashed in a ref so the fetch closure doesn't
+   * need it in its dependency array (re-binding would rebuild the
+   * poll loop on every parent re-render). */
+  const onFailureRef = useRef(onFailure);
+  useEffect(() => {
+    onFailureRef.current = onFailure;
+  });
+
+  /* Two pieces of state for the "fire toast once per new failure"
+   * contract:
+   *   • initialFetchDoneRef — first fetch primes seenFailedIdsRef
+   *     without firing toasts, so opening an old project doesn't
+   *     replay stale failures.
+   *   • seenFailedIdsRef — every failed id we've already toasted.
+   *     A variant that flips pending→failed during polling fires
+   *     exactly once; subsequent polls see the id in the set and
+   *     skip it. */
+  const initialFetchDoneRef = useRef(false);
+  const seenFailedIdsRef = useRef(new Set());
+
+  /* Reset both when projectId changes — refs persist across renders,
+   * so without this a navigation to a different project would start
+   * with the previous project's "already-toasted" set. */
+  useEffect(() => {
+    initialFetchDoneRef.current = false;
+    seenFailedIdsRef.current = new Set();
+  }, [projectId]);
+
   const fetchOnce = useCallback(
     async (silent = false) => {
       if (!projectId || !enabled) return;
@@ -68,7 +96,25 @@ export function useVideoVariants({ projectId, enabled }) {
         if (!silent) setError(err);
       } else {
         setError(null);
-        setVariants(data ?? []);
+        const next = data ?? [];
+
+        if (initialFetchDoneRef.current) {
+          for (const v of next) {
+            if (v.status === 'failed' && !seenFailedIdsRef.current.has(v.id)) {
+              seenFailedIdsRef.current.add(v.id);
+              onFailureRef.current?.(v);
+            }
+          }
+        } else {
+          for (const v of next) {
+            if (v.status === 'failed') {
+              seenFailedIdsRef.current.add(v.id);
+            }
+          }
+          initialFetchDoneRef.current = true;
+        }
+
+        setVariants(next);
       }
       if (!silent) setLoading(false);
     },

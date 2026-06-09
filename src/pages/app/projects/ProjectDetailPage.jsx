@@ -57,7 +57,18 @@ export default function ProjectDetailPage() {
     projectId,
     enabled: isCopywriting || isAdPackage,
   });
-  const video = useVideoVariants({ projectId, enabled: isVideo });
+  const video = useVideoVariants({
+    projectId,
+    enabled: isVideo,
+    /* Failed Veo generations no longer render as a card (filtered
+     * out in VideoResults). Surface the failure once via toast so
+     * the user still sees what happened — the row is detected
+     * inside useVideoVariants on the poll tick where its status
+     * flips to 'failed', deduped by id. */
+    onFailure: (variant) => {
+      toast.error(variant.errorMessage ?? 'יצירת הסרטון נכשלה');
+    },
+  });
 
   const [adPackageTab, setAdPackageTab] = useState('images');
   const [editingVariant, setEditingVariant] = useState(null);

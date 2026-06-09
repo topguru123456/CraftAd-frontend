@@ -55,6 +55,12 @@ const SOLO_MAX_W = {
 };
 
 export function VideoResults({ variants, loading, error, onRetry, aspectRatio }) {
+  /* Failed variants are surfaced once via toast at the page level
+   * (see useVideoVariants's `onFailure`). They never claim a card
+   * slot in the grid — a failed creative shouldn't compress the
+   * usable cards into a smaller cell or read as "almost a result". */
+  const displayVariants = variants.filter((v) => v.status !== 'failed');
+
   if (loading) return <SkeletonGrid aspectRatio={aspectRatio} />;
 
   if (error) {
@@ -74,7 +80,7 @@ export function VideoResults({ variants, loading, error, onRetry, aspectRatio })
     );
   }
 
-  if (variants.length === 0) {
+  if (displayVariants.length === 0) {
     return (
       <div className="rounded-card border border-dashed border-line bg-white p-12 text-center text-ink-muted" dir="rtl">
         <p className="text-base">לפרויקט הזה אין עדיין סרטונים.</p>
@@ -85,12 +91,12 @@ export function VideoResults({ variants, loading, error, onRetry, aspectRatio })
   /* Single-variant: center it with an aspect-aware cap. Multi: grid
    * — same shape it had before, kept for any future flow that
    * dispatches more than one video per project. */
-  if (variants.length === 1) {
+  if (displayVariants.length === 1) {
     const soloMaxW = SOLO_MAX_W[aspectRatio] ?? SOLO_MAX_W.square;
     return (
       <div className="flex justify-center">
         <div className={cn('w-full', soloMaxW)}>
-          <VideoCard variant={variants[0]} aspectRatio={aspectRatio} />
+          <VideoCard variant={displayVariants[0]} aspectRatio={aspectRatio} />
         </div>
       </div>
     );
@@ -98,7 +104,7 @@ export function VideoResults({ variants, loading, error, onRetry, aspectRatio })
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {variants.map((variant) => (
+      {displayVariants.map((variant) => (
         <VideoCard
           key={variant.id}
           variant={variant}
@@ -110,9 +116,12 @@ export function VideoResults({ variants, loading, error, onRetry, aspectRatio })
 }
 
 function VideoCard({ variant, aspectRatio }) {
+  /* Caller (VideoResults) already filtered out failed variants, so
+   * this component only renders the ready or in-flight states. The
+   * failed state lives entirely as a one-shot toast at the page
+   * level via useVideoVariants's onFailure callback. */
   const aspectClass = ASPECT_CLASS[aspectRatio] ?? ASPECT_CLASS.square;
   const isReady = variant.status === 'ready' && variant.videoUrl;
-  const isFailed = variant.status === 'failed';
 
   return (
     <article
@@ -139,12 +148,6 @@ function VideoCard({ variant, aspectRatio }) {
             playsInline
             className="absolute inset-0 w-full h-full object-cover bg-black"
           />
-        ) : isFailed ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-            <p className="text-xs text-danger line-clamp-3">
-              {variant.errorMessage ?? 'יצירת הסרטון נכשלה'}
-            </p>
-          </div>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center gap-3 px-4">
             <span
