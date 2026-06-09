@@ -82,10 +82,14 @@ export function useImageResults({ variants, projectName }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState(null);
 
-  /* Filter out failed-without-image variants. Failed-WITH-image rows
-   * are kept so users can still inspect them. */
+  /* Filter out every failed variant — the toast surfaced via
+   * useGenerationFailureToasts is the canonical signal for a
+   * failure, and a card for a failed row is just noise (the
+   * VariantCard's previous `isFailed` branch ignored the imageUrl
+   * anyway and rendered the error text, so the "keep failed-with-
+   * image for inspection" intent was never actually delivered). */
   const renderableVariants = useMemo(
-    () => variants.filter((v) => v.status !== 'failed' || v.imageUrl),
+    () => variants.filter((v) => v.status !== 'failed'),
     [variants],
   );
 
@@ -449,9 +453,12 @@ function SortDropdown({ value, onChange, options, className }) {
 /* ------------------------------------------------------------------ */
 
 function VariantCard({ variant, aspectRatio, selected, onToggleSelect, onEdit, onToggleBookmark }) {
+  /* Caller (ImageResultsGrid) filters failed variants out via
+   * `renderableVariants` — failures live as one-shot toasts at the
+   * page level (useGenerationFailureToasts). This card only renders
+   * the ready or in-flight states. */
   const aspectClass = ASPECT_CLASS[aspectRatio] ?? ASPECT_CLASS.square;
   const isReady = variant.status === 'ready' && variant.imageUrl;
-  const isFailed = variant.status === 'failed';
   const isPending = variant.status === 'pending';
 
   const [busy, setBusy] = useState(false);
@@ -520,12 +527,6 @@ function VariantCard({ variant, aspectRatio, selected, onToggleSelect, onEdit, o
             />
           </div>
         </>
-      ) : isFailed ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-          <p className="text-xs text-ink-muted line-clamp-3">
-            {variant.errorMessage ?? 'יצירה נכשלה'}
-          </p>
-        </div>
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center gap-3 px-4 py-6">
           <span
