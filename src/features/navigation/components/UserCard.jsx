@@ -41,42 +41,39 @@ export function UserCard({ user, planName = 'Starter', onChangePlan, onSignOut }
   return (
     <div className="w-full rounded-card bg-white border border-line p-4 space-y-3">
       <div className="flex items-center gap-3">
-        {/* RTL DOM-order rule: first DOM child = visual right. The
-            bolt goes FIRST so it lands on the visual right (matches
-            the design — status badge at top-right of the card), the
-            name+email block expands in the middle, and the avatar
-            sits on the visual left. */}
-        {/* Bolt wrapper is `relative` so the popover's `absolute`
-            positioning anchors here, not to the outer card.
-            Pinning the popover to `right-0` then extends it leftward
-            into the user-card body — plenty of room. */}
-        <div className="relative shrink-0">
-          <button
-            ref={triggerRef}
-            type="button"
-            onClick={() => setQuotaOpen((v) => !v)}
-            aria-label="הצגת מכסות החבילה"
-            aria-haspopup="dialog"
-            aria-expanded={quotaOpen}
-            className={cn(
-              'inline-flex h-6 w-6 items-center justify-center rounded-full',
-              'bg-brand-gradient text-white shadow-[0_4px_10px_rgba(237,86,153,0.35)]',
-              'hover:opacity-95 active:translate-y-[1px] transition-all',
-              'focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2',
-            )}
-          >
-            <LightningIcon className="h-3 w-3" />
-          </button>
-
-          {quotaOpen && <QuotaPopover ref={popoverRef} />}
-        </div>
+        {/* Original layout: avatar on the visual right (DOM[0]), name
+            in the middle, bolt on the visual left (DOM[2]). The bolt
+            being near the sidebar's inner edge isn't a clipping
+            problem anymore — QuotaPopover renders into a portal at
+            document.body with fixed positioning, so the sidebar's
+            overflow doesn't affect it. */}
+        <Avatar src={avatarUrl} alt={displayName} />
 
         <div className="flex-1 min-w-0 text-right">
           <p className="font-bold text-ink text-base leading-tight truncate">{displayName}</p>
           <p className="text-xs text-ink-muted truncate">{email}</p>
         </div>
 
-        <Avatar src={avatarUrl} alt={displayName} />
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => setQuotaOpen((v) => !v)}
+          aria-label="הצגת מכסות החבילה"
+          aria-haspopup="dialog"
+          aria-expanded={quotaOpen}
+          className={cn(
+            'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
+            'bg-brand-gradient text-white shadow-[0_4px_10px_rgba(237,86,153,0.35)]',
+            'hover:opacity-95 active:translate-y-[1px] transition-all',
+            'focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2',
+          )}
+        >
+          <LightningIcon className="h-3 w-3" />
+        </button>
+
+        {quotaOpen && (
+          <QuotaPopover ref={popoverRef} triggerRef={triggerRef} />
+        )}
       </div>
 
       {/* Action buttons. Each row: text first (right-aligned, expands),
