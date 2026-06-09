@@ -58,10 +58,13 @@ import { BookmarkAction, EditAction } from './CardActions';
 const ASPECT_CLASS = {
   square:   'aspect-square',
   story:    'aspect-[9/16]',
-  portrait: 'aspect-[4/5]',
+  // `portrait` ships as 3:4 — matches the wire value the dispatcher
+  // now sends to Imagen (see ratios.config.jsx for the rationale).
+  portrait: 'aspect-[3/4]',
   '1:1':    'aspect-square',
   '9:16':   'aspect-[9/16]',
   '16:9':   'aspect-[16/9]',
+  '3:4':    'aspect-[3/4]',
 };
 
 const SORT_OPTIONS = [
@@ -475,10 +478,18 @@ function VariantCard({ variant, aspectRatio, selected, onToggleSelect, onEdit, o
     >
       {isReady ? (
         <>
+          {/* `object-contain` keeps the full image visible if the
+              returned creative's aspect ratio drifts from the
+              container's. Imagen sometimes ships a slightly different
+              shape than requested (or older 1:1-buggy projects still
+              live in the DB); `object-cover` cropped those, which read
+              to QA as "image cut off". The `bg-surface-muted` fills any
+              letterbox gap so the bars look intentional rather than
+              broken. */}
           <img
             src={variant.imageUrl}
             alt="וריאציה של הקריאייטיב"
-            className="rounded-2xl inset-0 w-full h-full object-cover"
+            className="rounded-2xl inset-0 w-full h-full object-contain bg-surface-muted"
           />
 
           <SelectCheckbox

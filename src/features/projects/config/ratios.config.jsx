@@ -36,11 +36,20 @@ export const RATIOS = Object.freeze([
     Icon: SquareIcon,
   },
   {
+    /* `portrait` was historically labeled 4:5 in this catalogue and
+     * everywhere else in the app. But Imagen's accepted ratios are
+     * {1:1, 9:16, 16:9, 3:4, 4:3} — 4:5 isn't valid as a wire value,
+     * so the dispatcher was silently coercing it to 1:1 (square) and
+     * the user got square images back when they expected portrait.
+     * We now declare 3:4 here so the picker, the wire value, and the
+     * generated image all agree. The icon asset is still the 4vs5
+     * mock — close enough proportionally that it doesn't need a new
+     * file. */
     id: 'portrait',
     label: 'פורטרט',
-    ratio: '4:5',
+    ratio: '3:4',
     width: 1080,
-    height: 1350,
+    height: 1440,
     Icon: PortraitIcon,
   },
   {
