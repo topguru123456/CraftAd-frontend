@@ -13,7 +13,18 @@ import { cn } from '@lib/cn';
  *     blank before play.
  *   • Pending/dispatched: aspect-correct placeholder with a spinner
  *     and the "ה-AI עובד..." message.
- *   • Failed: aspect-correct error tile with the row's errorMessage. */
+ *   • Failed: aspect-correct error tile with the row's errorMessage.
+ *
+ * Layout strategy:
+ *   • Video is a single-dispatch flow today, so the typical case is
+ *     ONE variant. A 3-column grid wastes ~2/3 of the page width
+ *     when only one card renders — the original implementation
+ *     reused campaign-creative's layout (3 image variants) and the
+ *     mismatch shipped as a UI bug.
+ *   • Single-variant case → flex-center the card with a per-aspect
+ *     max-width so the video reads as the page's hero, not a thumb.
+ *   • Multi-variant case (future flows or re-runs) → keep the
+ *     responsive grid so cards stay legible side-by-side. */
 
 const ASPECT_CLASS = {
   square: 'aspect-square',
@@ -22,6 +33,25 @@ const ASPECT_CLASS = {
   '1:1': 'aspect-square',
   '9:16': 'aspect-[9/16]',
   '16:9': 'aspect-video',
+};
+
+/* Per-aspect cap for the single-video layout. Picked so the rendered
+ * video height stays inside a typical 1080-ish viewport without
+ * forcing the user to scroll:
+ *   • 9:16 portrait → 448px wide ≈ 796px tall — fits a 1080 viewport
+ *     with header room; anything wider becomes too tall.
+ *   • 3:4 / 4:5 → 560px wide → 747 / 700 tall — comfortable hero.
+ *   • 1:1 → 640px wide → 640 tall — fills the column without
+ *     dominating.
+ *   • 16:9 → 800px wide → 450 tall — landscape works larger because
+ *     its height stays low. */
+const SOLO_MAX_W = {
+  square: 'max-w-[640px]',
+  story: 'max-w-[448px]',
+  portrait: 'max-w-[560px]',
+  '1:1': 'max-w-[640px]',
+  '9:16': 'max-w-[448px]',
+  '16:9': 'max-w-[800px]',
 };
 
 export function VideoResults({ variants, loading, error, onRetry, aspectRatio }) {
@@ -48,6 +78,20 @@ export function VideoResults({ variants, loading, error, onRetry, aspectRatio })
     return (
       <div className="rounded-card border border-dashed border-line bg-white p-12 text-center text-ink-muted" dir="rtl">
         <p className="text-base">לפרויקט הזה אין עדיין סרטונים.</p>
+      </div>
+    );
+  }
+
+  /* Single-variant: center it with an aspect-aware cap. Multi: grid
+   * — same shape it had before, kept for any future flow that
+   * dispatches more than one video per project. */
+  if (variants.length === 1) {
+    const soloMaxW = SOLO_MAX_W[aspectRatio] ?? SOLO_MAX_W.square;
+    return (
+      <div className="flex justify-center">
+        <div className={cn('w-full', soloMaxW)}>
+          <VideoCard variant={variants[0]} aspectRatio={aspectRatio} />
+        </div>
       </div>
     );
   }
@@ -79,13 +123,17 @@ function VideoCard({ variant, aspectRatio }) {
         {isReady ? (
           // `preload="metadata"` so we get the poster + duration without
           // downloading the full mp4 until the user presses play.
+          // `object-contain` (not `object-cover`) keeps the video's
+          // full frame even if Veo ships a slightly different ratio
+          // than the container. `bg-black` fills any letterbox gap
+          // so it reads as intentional.
           <video
             src={variant.videoUrl}
             poster={variant.posterUrl ?? undefined}
             controls
             preload="metadata"
             playsInline
-            className="absolute inset-0 w-full h-full object-cover bg-black"
+            className="absolute inset-0 w-full h-full object-contain bg-black"
           />
         ) : isFailed ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
@@ -109,16 +157,18 @@ function VideoCard({ variant, aspectRatio }) {
   );
 }
 
-// Single skeleton card sized to the project's aspect ratio so the
-// loading shape matches what's about to render (no square-skeleton-
-// then-portrait-card layout shift). Video is single-dispatch so one
-// card is honest about what to expect.
+// Skeleton matches the post-load layout exactly — same flex-center +
+// aspect-aware max-width — so the card doesn't pop from "1/3 column"
+// to "centered hero" when the variant lands. Video is single-dispatch.
 function SkeletonGrid({ aspectRatio }) {
   const aspectClass = ASPECT_CLASS[aspectRatio] ?? ASPECT_CLASS.square;
+  const soloMaxW = SOLO_MAX_W[aspectRatio] ?? SOLO_MAX_W.square;
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div className="rounded-2xl border border-line bg-white p-3">
-        <div className={cn('rounded-xl bg-surface-muted animate-pulse', aspectClass)} />
+    <div className="flex justify-center">
+      <div className={cn('w-full', soloMaxW)}>
+        <div className="rounded-2xl border border-line bg-white p-3">
+          <div className={cn('rounded-xl bg-surface-muted animate-pulse', aspectClass)} />
+        </div>
       </div>
     </div>
   );
