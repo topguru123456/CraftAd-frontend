@@ -41,18 +41,15 @@ export function UserCard({ user, planName = 'Starter', onChangePlan, onSignOut }
   return (
     <div className="w-full rounded-card bg-white border border-line p-4 space-y-3">
       <div className="flex items-center gap-3">
-        {/* RTL: first DOM = right. Lightning badge on the right (brand
-            accent), name+email expand in the middle, avatar on the left. */}
-        <Avatar src={avatarUrl} alt={displayName} />
-
-        <div className="flex-1 min-w-0 text-right">
-          <p className="font-bold text-ink text-base leading-tight truncate">{displayName}</p>
-          <p className="text-xs text-ink-muted truncate">{email}</p>
-        </div>
-
-        {/* Bolt now opens the quota popover. The wrapper is `relative`
-            so the popover's `absolute` positioning anchors here, not
-            to the outer card. */}
+        {/* RTL DOM-order rule: first DOM child = visual right. The
+            bolt goes FIRST so it lands on the visual right (matches
+            the design — status badge at top-right of the card), the
+            name+email block expands in the middle, and the avatar
+            sits on the visual left. */}
+        {/* Bolt wrapper is `relative` so the popover's `absolute`
+            positioning anchors here, not to the outer card.
+            Pinning the popover to `right-0` then extends it leftward
+            into the user-card body — plenty of room. */}
         <div className="relative shrink-0">
           <button
             ref={triggerRef}
@@ -73,6 +70,13 @@ export function UserCard({ user, planName = 'Starter', onChangePlan, onSignOut }
 
           {quotaOpen && <QuotaPopover ref={popoverRef} />}
         </div>
+
+        <div className="flex-1 min-w-0 text-right">
+          <p className="font-bold text-ink text-base leading-tight truncate">{displayName}</p>
+          <p className="text-xs text-ink-muted truncate">{email}</p>
+        </div>
+
+        <Avatar src={avatarUrl} alt={displayName} />
       </div>
 
       {/* Action buttons. Each row: text first (right-aligned, expands),
