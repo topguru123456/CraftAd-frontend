@@ -24,13 +24,16 @@ import { projectsApi } from '@features/projects/api/projects.api';
  *   2. Detect the inspo's aspect ratio client-side. The output's
  *      shape mirrors the inspo per product decision; the wizard has
  *      no separate ratio picker.
- *   3. Insert a `projects` row with `serviceType='inspired-creation'`
- *      and `draft.images = [product, inspo]`. The order matches
- *      campaign-creative's slot convention: [0] is the product,
- *      [1] is the user-supplied reference, so
- *      `resolveCampaignGcfImageSlots` on the backend produces the
- *      right GCF payload without any inspired-creation-specific
- *      branching.
+ *   3. Insert a `projects` row with `serviceType='inspired-creation'`.
+ *      The draft mirrors campaign-creative's two-field slot
+ *      convention: `images: [product]` for `productImageUrlFromDraft`
+ *      and `referenceAd: { url, path, source: 'upload' }` for
+ *      `parseReferenceAd`. Both are read by
+ *      `resolveCampaignGcfImageSlots` on the backend — sending the
+ *      inspo as a second entry in `images` would have looked correct
+ *      but the dispatcher would have silently fallen back to
+ *      duplicating the brand logo into the `example` slot, so the
+ *      inspo would have been ignored entirely.
  *   4. Fan out VARIANTS_PER_CLICK parallel dispatches — same number
  *      campaign-creative ships per click. The webhook + scoring +
  *      edit + download paths are identical from here on.
@@ -88,18 +91,29 @@ export default function InspiredCreationPage() {
         aspectRatio,
         name: buildProjectName(activeBrand.name),
         draft: {
+          /* Product image goes in `images[0]` — that's where the
+           * backend's `productImageUrlFromDraft` reads it from. The
+           * inspo goes in `referenceAd` (NOT `images[1]`) — that's
+           * the field `parseReferenceAd` reads, and it's what makes
+           * `resolveCampaignGcfImageSlots` set `example` to the
+           * inspo URL (referenceMode='user') instead of falling
+           * back to a logo duplicate. Wrong shape here would mean
+           * the inspo is uploaded but completely ignored by the
+           * dispatcher. */
           images: [
             {
               url: productResult.data.url,
               path: productResult.data.path,
               source: 'device',
             },
-            {
-              url: inspoResult.data.url,
-              path: inspoResult.data.path,
-              source: 'device',
-            },
           ],
+          referenceAd: {
+            url: inspoResult.data.url,
+            path: inspoResult.data.path,
+            /* `source: 'upload'` matches the backend's
+             * ReferenceAdSource union ('template' | 'upload'). */
+            source: 'upload',
+          },
           /* Empty campaign context: no goal/nature/audience to pass.
            * Kept as explicit empty strings (not omitted) so the
            * backend's prompt assembler doesn't have to defend
