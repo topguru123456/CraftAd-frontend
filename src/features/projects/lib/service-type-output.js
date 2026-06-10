@@ -23,10 +23,11 @@ import { videoGenerationsApi } from '@features/projects/flows/video-creative/api
  */
 
 const OUTPUT_KIND = Object.freeze({
-  'campaign-creative': 'image',
-  'product-images':    'image',
-  'copywriting-ads':   'text',
-  'video-creative':    'video',
+  'campaign-creative':  'image',
+  'inspired-creation':  'image',
+  'product-images':     'image',
+  'copywriting-ads':    'text',
+  'video-creative':     'video',
   // Future service types — uncomment as the flows land:
   // 'stock-photos':        'image',
   // 'advertising-package': 'image',

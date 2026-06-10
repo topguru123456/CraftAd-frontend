@@ -1,4 +1,5 @@
 import { DocumentText, MessageEdit } from 'iconsax-react';
+import InspiredCreationIcon from '@assets/icons/sidebar/inspired-creation.svg?react';
 
 /* Lottie animations are LAZY-loaded. Using dynamic `import()` makes Vite
  * emit each animation as its own chunk and code-splits them out of the
@@ -109,6 +110,21 @@ export const PROJECT_TYPES = Object.freeze([
     shortTitle: 'חבילה',
     description: 'מודעות + קופי מוכן לפרסום בתוך פרויקט אחד.',
     animationLoader: ANIMATION_LOADERS.advertisingPackage,
+    badge: { label: 'ממומן', tone: PROJECT_BADGE_TONES.paid },
+    status: 'available',
+  },
+  {
+    /* Inspired-creation runs through the same campaign-creative
+     * dispatch pipeline; project rows live in the same table with a
+     * distinct `serviceType` so the project-list card can label them
+     * correctly and the dedicated page can route to them. No Lottie
+     * animation yet — uses the sidebar's static svg as a fallback
+     * icon, same pattern coming-soon types use. */
+    id: 'inspired-creation',
+    title: 'יצירה מהשראה',
+    shortTitle: 'מהשראה',
+    description: 'העלו מודעה שאהבתם ותמונת מוצר — ה-AI ייצור גרסה משלכם.',
+    Icon: InspiredCreationIcon,
     badge: { label: 'ממומן', tone: PROJECT_BADGE_TONES.paid },
     status: 'available',
   },
