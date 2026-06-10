@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useActiveBrand } from '@/contexts/BrandsContext';
-import { Logo } from '@components/ui';
 import { VideoIcon, MenuIcon } from '@features/navigation';
 import { VideoTutorialModal } from '@features/tutorials';
 import { SupportBanner } from './SupportBanner';
@@ -9,8 +8,9 @@ import { SupportBanner } from './SupportBanner';
  *
  * The centered logo is "the active brand's mark" — it cascades from the
  * sidebar's brand picker (BrandsContext.activeBrand). When no brand is
- * selected we fall back to Craftad's own logo so the header doesn't go
- * blank.
+ * selected the center stays empty — the previous Craftad-logo
+ * fallback was misleading because users mistook it for their brand;
+ * an empty center honestly reflects "no brand active."
  *
  * Mobile responsiveness:
  *   - Logo height steps down from 48px to 32px so it fits between the
@@ -45,20 +45,17 @@ export function AppHeader({ onOpenSidebar }) {
 
         {/* Centered logo. `max-w` caps width so on mobile the logo can't
             push into the side controls; `object-contain` preserves the
-            aspect ratio inside that cap. */}
-        <div className="absolute left-1/2 -translate-x-1/2 px-2">
-          {activeBrand?.logoUrl ? (
+            aspect ratio inside that cap. When no active brand, render
+            nothing — see component docstring. */}
+        {activeBrand?.logoUrl && (
+          <div className="absolute left-1/2 -translate-x-1/2 px-2">
             <img
               src={activeBrand.logoUrl}
               alt={activeBrand.name}
               className="h-8 sm:h-12 w-auto max-w-[140px] sm:max-w-[220px] object-contain"
             />
-          ) : (
-            /* No active brand → fall back to Craftad's own mark so the
-               header is never blank. */
-            <Logo className="h-8 sm:h-12" />
-          )}
-        </div>
+          </div>
+        )}
 
         <button
           type="button"
