@@ -25,25 +25,15 @@ export function ActiveBrandCard() {
   const triggerRef = useRef(null);
   const popoverRef = useRef(null);
 
-  /* Empty state — fully static, no popover, no chevron. Same outer
-   * dimensions as the active state so the sidebar layout doesn't
-   * jump when a brand becomes active. */
-  if (!activeBrand) {
-    return (
-      <div
-        className={cn(
-          'w-full rounded-card bg-white border border-line',
-          'px-4 py-3 text-right',
-        )}
-        aria-label="אין מותג פעיל"
-      >
-        <span className="text-base font-bold text-ink-soft">אין מותג</span>
-      </div>
-    );
-  }
-
-  /* Close on outside click. mousedown beats click → the popover doesn't
-   * see "clicked outside" before its own row click fires. */
+  /* ALL hooks must run before any conditional return — otherwise
+   * transitioning from "no brand" to "brand active" changes the hook
+   * count between renders and React throws #310. The effect's body
+   * is gated on `open`, which can never become true in the no-brand
+   * branch (the trigger button doesn't exist there), so this is a
+   * no-op when no brand is active.
+   *
+   * mousedown (not click) beats the popover's own row click — the
+   * outside-click handler fires before the inside click finishes. */
   useEffect(() => {
     if (!open) return;
     const onMouseDown = (e) => {
@@ -61,6 +51,23 @@ export function ActiveBrandCard() {
       document.removeEventListener('keydown', onKey);
     };
   }, [open]);
+
+  /* Empty state — fully static, no popover, no chevron. Same outer
+   * dimensions as the active state so the sidebar layout doesn't
+   * jump when a brand becomes active. */
+  if (!activeBrand) {
+    return (
+      <div
+        className={cn(
+          'w-full rounded-card bg-white border border-line',
+          'px-4 py-3 text-right',
+        )}
+        aria-label="אין מותג פעיל"
+      >
+        <span className="text-base font-bold text-ink-soft">אין מותג</span>
+      </div>
+    );
+  }
 
   /* The empty-brand branch above guarantees activeBrand is non-null
    * here, so the logo fallback and "אין מותג פעיל" fallback name are
