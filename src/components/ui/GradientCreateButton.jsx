@@ -1,24 +1,22 @@
 import { Add } from 'iconsax-react';
 import { cn } from '@lib/cn';
 
-/**
- * Gradient CTA with the nested plus badge used on the projects/brands
- * toolbars (white tile → light-pink tile → pink +). Border-radius is
- * the shared `rounded-card` (16px) design token — matches the app's
- * card/button language; the prior `rounded-pill` (9999px) made the
- * ends fully semicircular which QA flagged as off-language.
- */
+/* Nested-tile chip: light-pink outer "frame" with a bright white
+ * halo, a crisp white inner tile holding the brand-pink plus.
+ * Structural pattern (outer frame + halo + inner tile) is borrowed
+ * from the original Bubble chip; sizing + palette are ours. */
 function NestedPlusBadge({ className }) {
   return (
     <span
       aria-hidden="true"
+      style={{ boxShadow: '0 0 0 4px rgba(255, 255, 255, 0.45)' }}
       className={cn(
-        'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white p-1',
+        'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-brand-100',
         className,
       )}
     >
-      <span className="inline-flex h-full w-full items-center justify-center rounded-lg bg-brand-50">
-        <Add size={18} variant="Bold" color="#D63F84" />
+      <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white">
+        <Add size={22} variant="Bold" color="#D63F84" />
       </span>
     </span>
   );
