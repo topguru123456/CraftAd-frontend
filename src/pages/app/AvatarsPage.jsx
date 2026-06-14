@@ -54,6 +54,13 @@ export default function AvatarsPage() {
   const [reloadToken, setReloadToken] = useState(0);
 
   const [isCreating, setIsCreating] = useState(false);
+  /* `isAutoPolling` is true while the catch-up loop is actively
+   * waiting for the auto-created avatar (post-brand-creation) to
+   * appear. Drives the "creating..." placeholder card when the list
+   * is empty — without it, users see the empty state during the
+   * ~5-10s window between OpenAI returning and the avatar row
+   * landing in the DB, and conclude nothing's happening. */
+  const [isAutoPolling, setIsAutoPolling] = useState(false);
   const [actionError, setActionError] = useState(null);
 
   const [editingAvatar, setEditingAvatar] = useState(null);
@@ -64,6 +71,7 @@ export default function AvatarsPage() {
     if (!brandId) {
       setAvatars([]);
       setLoading(false);
+      setIsAutoPolling(false);
       return undefined;
     }
 
@@ -73,6 +81,7 @@ export default function AvatarsPage() {
 
     setLoading(true);
     setLoadError(null);
+    setIsAutoPolling(false);
 
     /* Re-fetch one more time. Used by the auto-create catch-up loop
      * — we don't flip `loading` because the gallery is already
@@ -83,10 +92,18 @@ export default function AvatarsPage() {
       pollAttempts += 1;
       const { data, error } = await avatarsApi.listByBrand(brandId);
       if (cancelled) return;
-      if (error || !Array.isArray(data)) return;
+      if (error || !Array.isArray(data)) {
+        setIsAutoPolling(false);
+        return;
+      }
       setAvatars(data);
       if (shouldKeepPolling(data) && pollAttempts < POLL_MAX_ATTEMPTS) {
         pollTimer = setTimeout(pollOnce, POLL_INTERVAL_MS);
+      } else {
+        /* Either the list settled (row + portrait both present) or
+         * we hit the attempt cap. Either way the "creating..."
+         * affordance no longer reflects reality. */
+        setIsAutoPolling(false);
       }
     };
 
@@ -103,8 +120,12 @@ export default function AvatarsPage() {
       setLoading(false);
       /* Brand-create auto-fires an avatar pipeline server-side. If we
        * land here before it finishes, poll silently so the avatar
-       * appears without the user having to refresh. */
+       * appears without the user having to refresh. The placeholder
+       * card only shows while polling is genuinely active — it
+       * clears the moment polling stops, so we don't leave a stuck
+       * spinner around if the avatar arrives or the cap is hit. */
       if (shouldKeepPolling(list)) {
+        setIsAutoPolling(true);
         pollTimer = setTimeout(pollOnce, POLL_INTERVAL_MS);
       }
     });
@@ -202,13 +223,26 @@ export default function AvatarsPage() {
           <ErrorPanel message={loadError} onRetry={() => setReloadToken((t) => t + 1)} />
         )}
 
-        {!loading && !loadError && avatars.length === 0 && !isCreating && (
+        {/* Empty state shows ONLY when nothing's brewing — no
+            avatars, no manual create in flight, AND no background
+            auto-poll waiting for a freshly-triggered creation.
+            Otherwise the user sees a placeholder card so the page
+            feels responsive even when the row hasn't landed yet. */}
+        {!loading && !loadError && avatars.length === 0
+          && !isCreating && !isAutoPolling && (
           <EmptyState message='אין עדיין אווטארים למותג הזה. לחצו על "צרו אווטאר חדש" כדי לייצר אחד.' />
         )}
 
-        {!loading && !loadError && (avatars.length > 0 || isCreating) && (
+        {!loading && !loadError
+          && (avatars.length > 0 || isCreating || isAutoPolling) && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {isCreating && <CreatingCard />}
+            {/* Manual create OR background auto-poll both surface
+                the same CreatingCard so the user sees consistent
+                "your avatar is being generated" feedback regardless
+                of which path triggered it. */}
+            {(isCreating || (isAutoPolling && avatars.length === 0)) && (
+              <CreatingCard />
+            )}
             {avatars.map((avatar) => (
               <AvatarCard
                 key={avatar.id}
