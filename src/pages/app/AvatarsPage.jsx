@@ -236,21 +236,35 @@ export default function AvatarsPage() {
         {!loading && !loadError
           && (avatars.length > 0 || isCreating || isAutoPolling) && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {/* Manual create OR background auto-poll both surface
-                the same CreatingCard so the user sees consistent
-                "your avatar is being generated" feedback regardless
-                of which path triggered it. */}
-            {(isCreating || (isAutoPolling && avatars.length === 0)) && (
-              <CreatingCard />
-            )}
-            {avatars.map((avatar) => (
-              <AvatarCard
-                key={avatar.id}
-                avatar={avatar}
-                regenerating={regeneratingIds.has(avatar.id)}
-                onEdit={() => setEditingAvatar(avatar)}
-              />
-            ))}
+            {/* Manual create: CreatingCard at the top. */}
+            {isCreating && <CreatingCard />}
+            {/* Auto-poll, no row yet: CreatingCard placeholder. */}
+            {isAutoPolling && avatars.length === 0 && <CreatingCard />}
+            {avatars.map((avatar) => {
+              /* While the auto-poll is active, a row with no
+                 portrait is mid-generation — render it as a
+                 CreatingCard (spinner + "ה-AI יוצר את הפרסונה
+                 והדיוקן" copy), matching the visual the manual-
+                 create path uses. AvatarCard's built-in pencil
+                 placeholder looks idle and reads as "this avatar
+                 has no portrait, click to fix it," which is
+                 wrong during the auto-create window.
+
+                 Once polling stops (success or 80s cap), the same
+                 row falls through to AvatarCard so the user can
+                 regenerate manually if Gemini never delivered. */
+              if (isAutoPolling && !avatar.portraitUrl) {
+                return <CreatingCard key={avatar.id} />;
+              }
+              return (
+                <AvatarCard
+                  key={avatar.id}
+                  avatar={avatar}
+                  regenerating={regeneratingIds.has(avatar.id)}
+                  onEdit={() => setEditingAvatar(avatar)}
+                />
+              );
+            })}
           </div>
         )}
       </div>
