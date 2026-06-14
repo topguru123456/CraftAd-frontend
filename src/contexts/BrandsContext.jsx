@@ -109,17 +109,40 @@ export function BrandsProvider({ children }) {
 
   const createBrand = useCallback(async (input) => {
     const result = await brandsApi.create(input);
-    if (!result.error) {
+    if (!result.error && result.data?.id) {
+      /* Order matters here:
+       *
+       *   1. await refresh() — so the brands list contains the new
+       *      row BEFORE we point activeBrandId at it. If we flip the
+       *      id first, the reconciliation effect (which depends on
+       *      `brands` + `activeBrandId`) sees an id that doesn't
+       *      match anything in the stale list and falls back to
+       *      brands[0], which is the OLD active brand — silently
+       *      reverting our set.
+       *
+       *   2. setActiveBrand(new.id) — promote the new brand. This
+       *      fixes a chain of confusing UX: previously, after
+       *      creating brand B with brand A active, the avatars/
+       *      projects pages still scoped to brand A. Users then
+       *      clicked "create avatar" expecting it to act on B, but
+       *      it acted on A — and when A was in any odd state (race
+       *      with another tab's delete, stale activeBrandId from
+       *      localStorage pointing at a since-removed brand), the
+       *      backend rejected with "Brand not found or not owned
+       *      by caller". Promoting the new brand short-circuits
+       *      the whole class of issue.
+       *
+       *   3. quota refresh — count changed; nudge QuotaProvider.
+       *      Module-level trigger because QuotaProvider sits BELOW
+       *      BrandsProvider in the tree (useQuota() here would
+       *      throw). Calls before QuotaProvider mounts are silently
+       *      dropped — fine, the provider's mount-effect re-fetches. */
       await refresh();
-      /* Quota count changed — nudge QuotaProvider to re-read from the BE.
-       * `requestQuotaRefresh` is module-level because QuotaProvider sits
-       * BELOW BrandsProvider in the tree; useQuota() here would throw.
-       * Calls before QuotaProvider mounts (very early in app boot) are
-       * silently dropped — fine, the provider's mount-effect re-fetches. */
+      setActiveBrand(result.data.id);
       requestQuotaRefresh();
     }
     return result;
-  }, [refresh]);
+  }, [refresh, setActiveBrand]);
 
   const updateBrand = useCallback(async (id, patch) => {
     const result = await brandsApi.update(id, patch);
