@@ -28,6 +28,11 @@ export default {
         '2xl':['2rem',     { lineHeight: '1.25' }],
         '3xl':['2.5rem',   { lineHeight: '1.2' }],
       },
+      /* `3xl` kicks in on monitors wider than ~1920px (full-window 1080p
+       * maximized, plus 1440p and 4K). Used by surfaces that want to
+       * fan out to a 4-up grid on wide displays without disturbing the
+       * default 3-up at 2xl (1536px). */
+      screens: { '3xl': '1920px' },
       borderRadius: { input:'10px', button:'12px', card:'16px', pill:'9999px' },
       boxShadow: {
         soft:'0 2px 8px rgba(10,31,48,0.06)',

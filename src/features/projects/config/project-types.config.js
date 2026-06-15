@@ -46,6 +46,12 @@ const ANIMATION_LOADERS = Object.freeze({
  *   badge            — { label, tone } shown top-right of the card.
  *                        tones: 'paid' | 'beta' | 'organic' | 'soon'
  *   status           — 'available' | 'coming-soon'
+ *   hiddenFromLauncher — when true, the entry stays in the catalogue
+ *                        (so getProjectType + badge lookups + the
+ *                        detail page still work for existing project
+ *                        rows) but the creation grid skips it. Use for
+ *                        types reached via dedicated sidebar entry
+ *                        rather than the project-type launcher.
  *
  * To add a new type: append an entry. The grid renders whatever order
  * this array is in.
@@ -119,7 +125,13 @@ export const PROJECT_TYPES = Object.freeze([
      * distinct `serviceType` so the project-list card can label them
      * correctly and the dedicated page can route to them. No Lottie
      * animation yet — uses the sidebar's static svg as a fallback
-     * icon, same pattern coming-soon types use. */
+     * icon, same pattern coming-soon types use.
+     *
+     * Hidden from the launcher grid (`hiddenFromLauncher`) because the
+     * feature has its own sidebar entry that goes straight to the
+     * dedicated page; surfacing it twice (sidebar + grid) duplicates
+     * the entry point without adding affordance. The catalogue entry
+     * stays so lookups for existing project rows keep working. */
     id: 'inspired-creation',
     title: 'יצירה מהשראה',
     shortTitle: 'מהשראה',
@@ -127,6 +139,7 @@ export const PROJECT_TYPES = Object.freeze([
     Icon: InspiredCreationIcon,
     badge: { label: 'ממומן', tone: PROJECT_BADGE_TONES.paid },
     status: 'available',
+    hiddenFromLauncher: true,
   },
   {
     id: 'landing-copy',
