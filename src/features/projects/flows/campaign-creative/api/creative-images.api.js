@@ -78,28 +78,27 @@ export const creativeImagesApi = {
     return ok({ url: data.url, path: data.path });
   },
 
-  /** AI product image — reference sent as base64 (in-memory; fine for wizard sizes). */
+  /** AI product image — reference is optional; sent as base64 only when present. */
   async generateAiImage({ prompt, referenceFile } = {}) {
     const trimmedPrompt = prompt?.trim() ?? '';
     if (!trimmedPrompt) return fail('יש למלא תיאור לתמונה');
-    if (!referenceFile) return fail('יש לבחור תמונת ייחוס');
-    if (!referenceFile.type?.startsWith('image/')) {
-      return fail('תמונת הייחוס אינה תקינה');
+
+    const payload = { prompt: trimmedPrompt };
+
+    if (referenceFile) {
+      if (!referenceFile.type?.startsWith('image/')) {
+        return fail('תמונת הייחוס אינה תקינה');
+      }
+      try {
+        payload.referenceImageBase64 = await fileToBase64(referenceFile);
+      } catch (err) {
+        console.error('[creativeImagesApi.generateAiImage] base64 encode failed:', err);
+        return fail('שגיאה בקריאת תמונת הייחוס');
+      }
+      payload.referenceMime = referenceFile.type;
     }
 
-    let referenceImageBase64;
-    try {
-      referenceImageBase64 = await fileToBase64(referenceFile);
-    } catch (err) {
-      console.error('[creativeImagesApi.generateAiImage] base64 encode failed:', err);
-      return fail('שגיאה בקריאת תמונת הייחוס');
-    }
-
-    const { data, error } = await apiClient.post('/images/ai-generate', {
-      prompt: trimmedPrompt,
-      referenceImageBase64,
-      referenceMime: referenceFile.type,
-    });
+    const { data, error } = await apiClient.post('/images/ai-generate', payload);
 
     if (error) return { data: null, error };
     if (!data?.url) return fail('שגיאה בייצור התמונה');
