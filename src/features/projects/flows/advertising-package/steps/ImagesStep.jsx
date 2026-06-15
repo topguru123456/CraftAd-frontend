@@ -23,27 +23,38 @@ import { PexelsPickerModal } from '@features/projects/flows/campaign-creative/co
 import { AiGenerateModal } from '@features/projects/flows/campaign-creative/components/AiGenerateModal';
 import {
   STEP_IDS,
+  SUBMIT_STAGE,
   WIZARD_STEPS,
   useAdvertisingPackage,
 } from '../context/AdvertisingPackageContext';
 
 /* Step 3 (visible stepper, terminal) — תמונות.
  *
- * Identical surface to campaign-creative's ImagesStep: a 2-column
- * grid with the source-card on the right (DOM[0] in RTL) and the
- * preview on the left, three sources (AI / Pexels / device), and
- * the same image lifecycle (commit to Storage immediately, GC the
- * previous blob when the user re-picks or removes).
+ * Mirrors campaign-creative's ImagesStep: a 2-column grid with the
+ * source-card on the right (DOM[0] in RTL) and the preview on the
+ * left, three sources (AI / Pexels / device), and the same image
+ * lifecycle (commit to Storage immediately, GC the previous blob
+ * when the user re-picks or removes).
+ *
+ * Image is OPTIONAL: if the user submits without one, the context's
+ * submit() auto-generates a professional product photo before phase 1,
+ * so both the image dispatcher AND the copy dispatcher (which uses
+ * draft.images[0] for visual context) run with a real product photo.
  *
  * On submit, the context fans out IN PARALLEL to both the image
  * dispatcher and the copywriting dispatcher (see the context's
  * `submit` doc-comment for the dual fan-out rationale + partial-
- * success policy). The wizard's job here ends at "click the gradient
- * button when an image is picked"; everything past that lives in
- * the provider. */
+ * success policy). */
 export function ImagesStep() {
-  const { draft, updateDraft, back, submit, isSubmitting, submitError } =
-    useAdvertisingPackage();
+  const {
+    draft,
+    updateDraft,
+    back,
+    submit,
+    isSubmitting,
+    submitError,
+    submitStage,
+  } = useAdvertisingPackage();
   const { activeBrand } = useActiveBrand();
 
   const [uploadStatus, setUploadStatus] = useState('idle'); // 'idle' | 'uploading' | 'error'
@@ -52,17 +63,19 @@ export function ImagesStep() {
   const [aiOpen, setAiOpen] = useState(false);
 
   const currentImage = draft.images?.[0] ?? null;
-  /* Same gating contract as campaign-creative: image required,
-   * active brand required, no concurrent upload, no in-flight submit. */
+  const hasImage = Boolean(currentImage?.url);
+
+  /* Same gating contract as campaign-creative: active brand required,
+   * no concurrent upload, no in-flight submit. Missing image is no
+   * longer a gate — submit() auto-fabricates when the slot is empty. */
   const canSubmit =
     !isSubmitting &&
     uploadStatus !== 'uploading' &&
-    Boolean(currentImage?.url) &&
     Boolean(activeBrand?.id);
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    await submit({ brandId: activeBrand.id });
+    await submit({ brand: activeBrand });
   };
 
   /* Replace draft.images with a single new entry and GC the previous
@@ -134,6 +147,8 @@ export function ImagesStep() {
           />
         </div>
 
+        {!hasImage && <AutoImageNotice />}
+
         {/* Submit error inline — context's submit() sets this when the
           * project couldn't be created OR when BOTH image + copy
           * dispatches failed entirely (partial success doesn't
@@ -158,6 +173,8 @@ export function ImagesStep() {
             </span>
           }
         />
+
+        {isSubmitting && <SubmitStageCaption stage={submitStage} />}
       </section>
 
       <PexelsPickerModal
@@ -201,3 +218,40 @@ function Header({ onBack }) {
     </header>
   );
 }
+
+function AutoImageNotice() {
+  return (
+    <div
+      className="flex items-start gap-3 rounded-2xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-right"
+      role="status"
+    >
+      <span className="mt-0.5 shrink-0">
+        <MagicStar size="20" variant="Bold" color="#ED5699" />
+      </span>
+      <p className="text-sm text-ink leading-relaxed">
+        אם תמשיכו ללא תמונה, ה-AI ייצור עבורכם תמונת מוצר מקצועית באופן
+        אוטומטי בהתאם לתיאור והמותג. ניתן גם להעלות תמונה משלכם בכל אחת
+        מהאפשרויות לעיל.
+      </p>
+    </div>
+  );
+}
+
+function SubmitStageCaption({ stage }) {
+  const text = SUBMIT_STAGE_LABEL[stage];
+  if (!text) return null;
+  return (
+    <p
+      className="text-sm text-ink-muted text-center"
+      aria-live="polite"
+    >
+      {text}
+    </p>
+  );
+}
+
+const SUBMIT_STAGE_LABEL = Object.freeze({
+  [SUBMIT_STAGE.autoProductImage]: 'ה-AI מייצר עבורכם תמונת מוצר מקצועית...',
+  [SUBMIT_STAGE.creatingProject]:  'יוצר פרויקט...',
+  [SUBMIT_STAGE.dispatching]:      'מעביר את התוכן ליצירה...',
+});

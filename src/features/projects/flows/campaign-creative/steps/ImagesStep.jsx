@@ -9,6 +9,7 @@ import {
 import { useActiveBrand } from '@/contexts/BrandsContext';
 import {
   STEP_IDS,
+  SUBMIT_STAGE,
   WIZARD_STEPS,
   useCampaignCreative,
 } from '../context/CampaignCreativeContext';
@@ -20,9 +21,21 @@ import {
   ImageSourcePreview,
 } from '@features/projects/flows/shared';
 
-/** Final wizard step — product image in Storage (`draft.images[0]`); required to submit. */
+/** Final wizard step — product image in Storage (`draft.images[0]`).
+ *  Image is OPTIONAL: if the user submits without one, the context's
+ *  submit() auto-generates a professional product photo via the AI
+ *  image endpoint before creating the project, so the GCF dispatcher
+ *  contract (which requires a `product` slot) is unchanged. */
 export function ImagesStep() {
-  const { draft, updateDraft, back, submit, isSubmitting, submitError } = useCampaignCreative();
+  const {
+    draft,
+    updateDraft,
+    back,
+    submit,
+    isSubmitting,
+    submitError,
+    submitStage,
+  } = useCampaignCreative();
   const { activeBrand } = useActiveBrand();
 
   const [uploadStatus, setUploadStatus] = useState('idle'); // 'idle' | 'uploading' | 'error'
@@ -31,15 +44,19 @@ export function ImagesStep() {
   const [aiOpen, setAiOpen] = useState(false);
 
   const currentImage = draft.images?.[0] ?? null;
+  const hasImage = Boolean(currentImage?.url);
+
+  /* Submit is gated only on having an active brand and on not being
+   * mid-upload/mid-submit. Missing image is no longer a gate — submit()
+   * auto-fabricates a product image when the slot is empty. */
   const canSubmit =
     !isSubmitting &&
     uploadStatus !== 'uploading' &&
-    Boolean(currentImage?.url) &&
     Boolean(activeBrand?.id);
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    await submit({ brandId: activeBrand.id });
+    await submit({ brand: activeBrand });
   };
 
   const adoptImage = async (entry) => {
@@ -103,6 +120,8 @@ export function ImagesStep() {
           />
         </div>
 
+        {!hasImage && <AutoImageNotice />}
+
         {submitError && (
           <p className="text-sm text-danger text-right">
             {submitError.message ?? 'יצירת הקריאייטיב נכשלה. נסו שוב.'}
@@ -121,6 +140,8 @@ export function ImagesStep() {
             </span>
           }
         />
+
+        {isSubmitting && <SubmitStageCaption stage={submitStage} />}
       </section>
 
       <PexelsPickerModal
@@ -165,3 +186,43 @@ function Header({ onBack }) {
   );
 }
 
+/* Informational notice shown when no image is staged — tells the user
+ * the wizard won't block them and that the AI will fabricate a product
+ * photo automatically. Soft brand-tinted styling so it reads as a
+ * helpful hint, not an error. */
+function AutoImageNotice() {
+  return (
+    <div
+      className="flex items-start gap-3 rounded-2xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-right"
+      role="status"
+    >
+      <span className="mt-0.5 shrink-0">
+        <MagicStar size="20" variant="Bold" color="#ED5699" />
+      </span>
+      <p className="text-sm text-ink leading-relaxed">
+        אם תמשיכו ללא תמונה, ה-AI ייצור עבורכם תמונת מוצר מקצועית באופן
+        אוטומטי בהתאם לתיאור והמותג. ניתן גם להעלות תמונה משלכם בכל אחת
+        מהאפשרויות לעיל.
+      </p>
+    </div>
+  );
+}
+
+function SubmitStageCaption({ stage }) {
+  const text = SUBMIT_STAGE_LABEL[stage];
+  if (!text) return null;
+  return (
+    <p
+      className="text-sm text-ink-muted text-center"
+      aria-live="polite"
+    >
+      {text}
+    </p>
+  );
+}
+
+const SUBMIT_STAGE_LABEL = Object.freeze({
+  [SUBMIT_STAGE.autoProductImage]: 'ה-AI מייצר עבורכם תמונת מוצר מקצועית...',
+  [SUBMIT_STAGE.creatingProject]:  'יוצר פרויקט...',
+  [SUBMIT_STAGE.dispatching]:      'מעביר את הקריאייטיב ליצירה...',
+});

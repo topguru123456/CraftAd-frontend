@@ -17,6 +17,16 @@ import {
   getTargetAudienceLabel,
 } from '@features/projects/config/project-fields.config';
 import { PLATFORMS_BY_ID } from '@features/projects/config/platforms.config';
+import { generateAutoProductImage } from '@features/projects/flows/shared';
+
+/* Submit pipeline stages — mirrors campaign-creative so the UI can
+ * caption the spinner during the (slow) auto-image phase. */
+export const SUBMIT_STAGE = Object.freeze({
+  idle:             'idle',
+  autoProductImage: 'auto-product-image',
+  creatingProject:  'creating-project',
+  dispatching:      'dispatching',
+});
 
 /* Advertising-package wizard state.
  *
@@ -123,10 +133,17 @@ export function AdvertisingPackageProvider({ onCancel, onComplete, children }) {
   const [draft, setDraft] = useState(() => ({ ...EMPTY_DRAFT }));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [submitStage, setSubmitStage] = useState(SUBMIT_STAGE.idle);
 
   /* Back-stack: leaving a step pushes the leaving step so back()
    * returns there. Empty stack → back exits the wizard. */
   const historyRef = useRef([]);
+
+  const finishSubmit = useCallback((error) => {
+    setSubmitError(error ?? null);
+    setSubmitStage(SUBMIT_STAGE.idle);
+    setIsSubmitting(false);
+  }, []);
 
   const goTo = useCallback((nextStep) => {
     setStep((current) => {
@@ -227,41 +244,51 @@ export function AdvertisingPackageProvider({ onCancel, onComplete, children }) {
    * wizard surfaces this inline on step 3 so the user can retry
    * without re-walking the earlier steps. */
   const submit = useCallback(
-    async ({ brandId }) => {
+    async ({ brand }) => {
+      if (!brand?.id) {
+        const err = { message: 'לא נבחר מותג פעיל' };
+        finishSubmit(err);
+        return { data: null, error: err };
+      }
+
       setIsSubmitting(true);
       setSubmitError(null);
 
-      const productImage = draft.images?.[0];
+      /* If the user skipped the image step, auto-generate a product
+       * photo before phase 1 so phases 1+2 run unchanged. The copy
+       * side benefits too — its prompt reads draft.images[0].url for
+       * visual context. */
+      let productImage = draft.images?.[0] ?? null;
       if (!productImage?.url) {
-        const err = { message: 'יש לבחור תמונה לפני יצירת התוכן' };
-        setSubmitError(err);
-        setIsSubmitting(false);
-        return { data: null, error: err };
-      }
-      if (!brandId) {
-        const err = { message: 'לא נבחר מותג פעיל' };
-        setSubmitError(err);
-        setIsSubmitting(false);
-        return { data: null, error: err };
+        setSubmitStage(SUBMIT_STAGE.autoProductImage);
+        const { data, error } = await generateAutoProductImage({ draft, brand });
+        if (error || !data?.url) {
+          finishSubmit(
+            error ?? { message: 'יצירת תמונת המוצר האוטומטית נכשלה. נסו שוב.' },
+          );
+          return { data: null, error: error ?? { message: 'auto-image failed' } };
+        }
+        productImage = data;
+        updateDraft({ images: [productImage] });
       }
 
       // Phase 1: create the project row.
-      const projectDraft = buildProjectDraft();
+      setSubmitStage(SUBMIT_STAGE.creatingProject);
+      const projectDraft = { ...buildProjectDraft(), images: [productImage] };
       const { data: project, error: projectError } = await projectsApi.create({
-        brandId,
+        brandId: brand.id,
         draft: projectDraft,
         aspectRatio: draft.ratioId,
         name: draft.name,
         serviceType: 'advertising-package',
       });
       if (projectError || !project?.id) {
-        const err = projectError ?? { message: 'יצירת הפרויקט נכשלה' };
-        setSubmitError(err);
-        setIsSubmitting(false);
-        return { data: null, error: err };
+        finishSubmit(projectError ?? { message: 'יצירת הפרויקט נכשלה' });
+        return { data: null, error: projectError ?? { message: 'project create failed' } };
       }
 
       // Phase 2: parallel dual dispatch.
+      setSubmitStage(SUBMIT_STAGE.dispatching);
       const [imageResult, copyResult] = await Promise.all([
         dispatchImageBatch(project.id, VARIANTS_PER_CLICK),
         /* copywritingGenerationsApi.dispatch returns { data, error }
@@ -295,13 +322,12 @@ export function AdvertisingPackageProvider({ onCancel, onComplete, children }) {
           message:
             firstImageError ?? copyErrorMessage ?? 'יצירת התוכן נכשלה',
         };
-        setSubmitError(err);
-        setIsSubmitting(false);
+        finishSubmit(err);
         return { data: null, error: err };
       }
 
       // At least partial success: navigate to the detail page.
-      setIsSubmitting(false);
+      finishSubmit(null);
       onComplete?.({
         draft,
         projectId: project.id,
@@ -312,7 +338,7 @@ export function AdvertisingPackageProvider({ onCancel, onComplete, children }) {
         data: { projectId: project.id, imageUids, copyVariants },
       };
     },
-    [draft, buildProjectDraft, dispatchImageBatch, onComplete],
+    [draft, buildProjectDraft, dispatchImageBatch, updateDraft, finishSubmit, onComplete],
   );
 
   const value = useMemo(
@@ -321,6 +347,7 @@ export function AdvertisingPackageProvider({ onCancel, onComplete, children }) {
       draft,
       isSubmitting,
       submitError,
+      submitStage,
       wizardSteps: WIZARD_STEPS,
       goTo,
       next,
@@ -334,6 +361,7 @@ export function AdvertisingPackageProvider({ onCancel, onComplete, children }) {
       draft,
       isSubmitting,
       submitError,
+      submitStage,
       goTo,
       next,
       back,

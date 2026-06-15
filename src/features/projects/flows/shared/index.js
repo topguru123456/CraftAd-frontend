@@ -10,4 +10,8 @@ export { RatioPicker } from './RatioPicker';
 export { ImageCropModal } from './ImageCropModal';
 export { ImageSourceCard } from './ImageSourceCard';
 export { ImageSourcePreview } from './ImageSourcePreview';
+export {
+  buildAutoProductPrompt,
+  generateAutoProductImage,
+} from './auto-product-image';
 export { getProjectFlow, isProjectFlowRoutable } from './project-flows.registry';

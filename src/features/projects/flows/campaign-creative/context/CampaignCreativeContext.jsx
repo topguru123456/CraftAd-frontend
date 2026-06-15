@@ -15,6 +15,18 @@ import {
   getTargetAudienceLabel,
 } from '@features/projects/config/project-fields.config';
 import { PLATFORMS_BY_ID } from '@features/projects/config/platforms.config';
+import { generateAutoProductImage } from '@features/projects/flows/shared';
+
+/* Submit pipeline stages. Surfaced to the UI so the step can render
+ * an explanatory caption while the spinner is up (auto-image generation
+ * adds 10-20s before project creation; without a stage label the user
+ * just sees a long opaque spinner). */
+export const SUBMIT_STAGE = Object.freeze({
+  idle:             'idle',
+  autoProductImage: 'auto-product-image',
+  creatingProject:  'creating-project',
+  dispatching:      'dispatching',
+});
 
 export const STEP_IDS = Object.freeze({
   size: 'size',
@@ -62,7 +74,14 @@ export function CampaignCreativeProvider({ onCancel, onComplete, children }) {
   const [draft, setDraft] = useState(() => ({ ...EMPTY_DRAFT }));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [submitStage, setSubmitStage] = useState(SUBMIT_STAGE.idle);
   const historyRef = useRef([]);
+
+  const finishSubmit = useCallback((error) => {
+    setSubmitError(error ?? null);
+    setSubmitStage(SUBMIT_STAGE.idle);
+    setIsSubmitting(false);
+  }, []);
 
   const goTo = useCallback((nextStep) => {
     setStep((current) => {
@@ -133,39 +152,59 @@ export function CampaignCreativeProvider({ onCancel, onComplete, children }) {
     };
   }, [draft]);
 
+  /* Submit terminator.
+   *
+   * If the user reached this step without picking a product image,
+   * we auto-generate one via the AI image endpoint before creating
+   * the project, so the existing GCF dispatcher contract (which
+   * requires a `product` image slot) is unchanged. The auto path is
+   * the single behavior difference vs. the previous gate-and-fail
+   * approach; everything downstream — project create + variant
+   * dispatch — is identical.
+   *
+   * Brand is passed in full (not just id) because the auto-prompt
+   * needs brand name + description for context. */
   const submit = useCallback(
-    async ({ brandId }) => {
+    async ({ brand }) => {
+      if (!brand?.id) {
+        const err = { message: 'לא נבחר מותג פעיל' };
+        finishSubmit(err);
+        return { data: null, error: err };
+      }
+
       setIsSubmitting(true);
       setSubmitError(null);
 
-      const productImage = draft.images?.[0];
+      let productImage = draft.images?.[0] ?? null;
+
       if (!productImage?.url) {
-        const err = { message: 'יש לבחור תמונה לפני יצירת הקריאייטיב' };
-        setSubmitError(err);
-        setIsSubmitting(false);
-        return { data: null, error: err };
-      }
-      if (!brandId) {
-        const err = { message: 'לא נבחר מותג פעיל' };
-        setSubmitError(err);
-        setIsSubmitting(false);
-        return { data: null, error: err };
+        setSubmitStage(SUBMIT_STAGE.autoProductImage);
+        const { data, error } = await generateAutoProductImage({ draft, brand });
+        if (error || !data?.url) {
+          finishSubmit(
+            error ?? { message: 'יצירת תמונת המוצר האוטומטית נכשלה. נסו שוב.' },
+          );
+          return { data: null, error: error ?? { message: 'auto-image failed' } };
+        }
+        productImage = data;
+        updateDraft({ images: [productImage] });
       }
 
+      setSubmitStage(SUBMIT_STAGE.creatingProject);
+      const projectDraft = { ...buildProjectDraft(), images: [productImage] };
       const { data: project, error: projectError } = await projectsApi.create({
-        brandId,
-        draft: buildProjectDraft(),
+        brandId: brand.id,
+        draft: projectDraft,
         aspectRatio: draft.ratioId,
         name: draft.name,
         serviceType: 'campaign-creative',
       });
       if (projectError || !project?.id) {
-        const err = projectError ?? { message: 'יצירת הפרויקט נכשלה' };
-        setSubmitError(err);
-        setIsSubmitting(false);
-        return { data: null, error: err };
+        finishSubmit(projectError ?? { message: 'יצירת הפרויקט נכשלה' });
+        return { data: null, error: projectError ?? { message: 'project create failed' } };
       }
 
+      setSubmitStage(SUBMIT_STAGE.dispatching);
       const { uids, errors } = await dispatchBatch(project.id, VARIANTS_PER_CLICK);
 
       if (uids.length === 0) {
@@ -173,16 +212,15 @@ export function CampaignCreativeProvider({ onCancel, onComplete, children }) {
           console.warn('[submit] orphan project rollback failed:', err);
         });
         const err = { message: errors[0] ?? 'יצירת הקריאייטיב נכשלה' };
-        setSubmitError(err);
-        setIsSubmitting(false);
+        finishSubmit(err);
         return { data: null, error: err };
       }
 
-      setIsSubmitting(false);
+      finishSubmit(null);
       onComplete?.({ draft, projectId: project.id, uids });
       return { data: { projectId: project.id, uids } };
     },
-    [draft, dispatchBatch, buildProjectDraft, onComplete],
+    [draft, dispatchBatch, buildProjectDraft, updateDraft, finishSubmit, onComplete],
   );
 
   const value = useMemo(
@@ -191,6 +229,7 @@ export function CampaignCreativeProvider({ onCancel, onComplete, children }) {
       draft,
       isSubmitting,
       submitError,
+      submitStage,
       wizardSteps: WIZARD_STEPS,
       goTo,
       next,
@@ -199,7 +238,19 @@ export function CampaignCreativeProvider({ onCancel, onComplete, children }) {
       updateDraft,
       submit,
     }),
-    [step, draft, isSubmitting, submitError, goTo, next, back, cancel, updateDraft, submit],
+    [
+      step,
+      draft,
+      isSubmitting,
+      submitError,
+      submitStage,
+      goTo,
+      next,
+      back,
+      cancel,
+      updateDraft,
+      submit,
+    ],
   );
 
   return (
