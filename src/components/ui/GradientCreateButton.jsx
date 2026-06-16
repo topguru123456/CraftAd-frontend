@@ -1,27 +1,20 @@
 import { Add } from 'iconsax-react';
 import { cn } from '@lib/cn';
 
-/* Nested-tile chip matching the original Bubble create-button:
- * white outer card → softly tinted inner tile → brand-pink plus.
- * The structural cue is "stamp inside a paper card", not the
- * stacked-frames-with-halo we had before — the outer is pure
- * white so it reads as a single clean tile against the pink
- * gradient pill, with a subtle white halo for the soft bloom.
- * The inner uses a tiny brand-50 → brand-100 vertical gradient
- * so the nested tile is visible without competing with the +. */
-function NestedPlusBadge({ className }) {
+/* White plus glyph on the pink gradient pill. The earlier
+ * nested-tile chip competed with the Hebrew label for visual
+ * weight; a bare glyph in a sized slot reads cleaner and matches
+ * the simpler create-button language the rest of the app uses. */
+function PlusGlyph({ className }) {
   return (
     <span
       aria-hidden="true"
-      style={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.35)' }}
       className={cn(
-        'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-white',
+        'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px]',
         className,
       )}
     >
-      <span className="inline-flex h-7 w-7 items-center justify-center rounded-[8px] bg-gradient-to-b from-brand-50 to-brand-100">
-        <Add size={20} variant="Bold" color="#D63F84" />
-      </span>
+      <Add size={22} variant="Bold" color="#FFFFFF" />
     </span>
   );
 }
@@ -45,7 +38,7 @@ export function GradientCreateButton({
       )}
       {...props}
     >
-      <NestedPlusBadge className={iconClassName} />
+      <PlusGlyph className={iconClassName} />
       <span className="whitespace-nowrap">{children}</span>
     </button>
   );
