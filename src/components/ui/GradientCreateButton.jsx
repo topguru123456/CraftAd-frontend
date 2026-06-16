@@ -1,20 +1,20 @@
 import { Add } from 'iconsax-react';
 import { cn } from '@lib/cn';
 
-/* White plus glyph on the pink gradient pill. The earlier
- * nested-tile chip competed with the Hebrew label for visual
- * weight; a bare glyph in a sized slot reads cleaner and matches
- * the simpler create-button language the rest of the app uses. */
-function PlusGlyph({ className }) {
+/* White chip with a brand-pink plus, sitting on the gradient pill.
+ * Single-layer card — no nested inner tile — with a soft white halo
+ * for the gentle bloom borrowed from the original Bubble chip. */
+function PlusBadge({ className }) {
   return (
     <span
       aria-hidden="true"
+      style={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.35)' }}
       className={cn(
-        'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px]',
+        'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-white',
         className,
       )}
     >
-      <Add size={22} variant="Bold" color="#FFFFFF" />
+      <Add size={22} variant="Bold" color="#D63F84" />
     </span>
   );
 }
@@ -38,7 +38,7 @@ export function GradientCreateButton({
       )}
       {...props}
     >
-      <PlusGlyph className={iconClassName} />
+      <PlusBadge className={iconClassName} />
       <span className="whitespace-nowrap">{children}</span>
     </button>
   );
