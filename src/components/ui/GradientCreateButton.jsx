@@ -30,7 +30,7 @@ export function GradientCreateButton({
     <button
       type={type}
       className={cn(
-        'inline-flex items-center gap-3 rounded-card px-5 py-2.5',
+        'inline-flex items-center gap-3 rounded-card px-1 py-2.5',
         'bg-brand-gradient text-white text-md font-bold shadow-brand',
         'hover:shadow-[0_10px_22px_rgba(237,86,153,0.45)] active:translate-y-[1px]',
         'transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed',

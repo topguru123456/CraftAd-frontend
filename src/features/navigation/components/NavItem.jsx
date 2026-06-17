@@ -12,7 +12,7 @@ export function NavItem({ item }) {
       end={item.end}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors',
+          'flex items-center gap-3 px-1 py-2.5 rounded-lg transition-colors',
           'text-md text-ink',
           isActive
             ? 'bg-surface-muted font-bold'
