@@ -156,6 +156,7 @@ function fromRealtime(row) {
     prompt: row.prompt ?? null,
     imageUrl: row.image_url ?? null,
     cleanImageUrl: row.clean_image_url ?? null,
+    thumbnailUrl: row.thumbnail_url ?? null,
     errorMessage: row.error_message ?? null,
     creativeScore: row.creative_score ?? null,
     performanceScore: row.performance_score ?? null,
@@ -175,6 +176,12 @@ function withDerived(row) {
   if (!row) return null;
   const imageUrl = row.imageUrl ?? null;
   const cleanImageUrl = row.cleanImageUrl ?? imageUrl;
+  /* `thumbnailUrl` is intentionally NOT coalesced to imageUrl here —
+   * the grid does its own fallback so that downstream code can tell
+   * "no thumbnail exists" from "thumbnail is the same as imageUrl".
+   * The first is informative (legacy / post-edit rows); the second
+   * could mask a bug where webhook upload silently failed. */
+  const thumbnailUrl = row.thumbnailUrl ?? null;
 
   const creativeScore = typeof row.creativeScore === 'number' ? row.creativeScore : null;
   const performanceScore = typeof row.performanceScore === 'number' ? row.performanceScore : null;
@@ -187,6 +194,7 @@ function withDerived(row) {
     ...row,
     imageUrl,
     cleanImageUrl,
+    thumbnailUrl,
     creativeScore,
     performanceScore,
     conversionScore,
