@@ -203,26 +203,18 @@ export function AdvertisingPackageProvider({ onCancel, onComplete, children }) {
     };
   }, [draft]);
 
-  /* Fan one project id into N parallel image dispatches. Mirrors
-   * campaign-creative's dispatchBatch. Returns { uids, errors }. */
+  /* One HTTP call dispatches all `count` variants — backend picks N
+   * distinct ad-reference templates server-side. Mirrors campaign-
+   * creative's dispatchBatch. */
   const dispatchImageBatch = useCallback(async (projectId, count) => {
-    const settled = await Promise.allSettled(
-      Array.from({ length: count }, () =>
-        creativeGenerationsApi.dispatch({ projectId }),
-      ),
-    );
-    const uids = [];
-    const errors = [];
-    for (const result of settled) {
-      if (result.status === 'fulfilled') {
-        const { data, error } = result.value;
-        if (error) errors.push(error.message ?? 'דחיית קריאה');
-        else if (data?.uid) uids.push(data.uid);
-      } else {
-        errors.push(result.reason?.message ?? 'תקלת רשת');
-      }
+    const { data, error } = await creativeGenerationsApi.dispatch({
+      projectId,
+      count,
+    });
+    if (error) {
+      return { uids: [], errors: [error.message ?? 'דחיית קריאה'] };
     }
-    return { uids, errors };
+    return { uids: data?.uids ?? [], errors: data?.errors ?? [] };
   }, []);
 
   /* Submit terminator — dual fan-out.

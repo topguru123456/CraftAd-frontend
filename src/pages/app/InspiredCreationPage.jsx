@@ -136,30 +136,30 @@ export default function InspiredCreationPage() {
         return;
       }
 
-      // 4. Fan out N parallel dispatches.
-      const dispatchResults = await Promise.allSettled(
-        Array.from({ length: VARIANTS_PER_CLICK }, () =>
-          creativeGenerationsApi.dispatch({ projectId: project.id }),
-        ),
-      );
+      // 4. One batch dispatch — server picks distinct ad-reference
+      //    templates server-side for each variant (only matters when
+      //    no user reference; inspired-creation always supplies one,
+      //    so the batch shares it).
+      const { data: dispatchData, error: dispatchError } =
+        await creativeGenerationsApi.dispatch({
+          projectId: project.id,
+          count: VARIANTS_PER_CLICK,
+        });
 
-      const dispatched = dispatchResults.filter(
-        (r) => r.status === 'fulfilled' && !r.value.error,
-      );
+      const dispatchedUids = dispatchData?.uids ?? [];
 
       // 5. Roll back if zero variants made it through. Same pattern
       //    campaign-creative uses (see CampaignCreativeContext.submit).
       //    Fire-and-forget the delete — if it fails we just have an
       //    orphan project the user can delete from the projects list.
-      if (dispatched.length === 0) {
+      if (dispatchedUids.length === 0) {
         projectsApi.remove(project.id).catch((err) => {
           console.warn('[inspired-creation] orphan project rollback failed:', err);
         });
-        const firstError = dispatchResults.find(
-          (r) => r.status === 'fulfilled' && r.value.error,
-        );
         toast.error(
-          firstError?.value?.error?.message ?? 'יצירת הקריאייטיב נכשלה',
+          dispatchError?.message ??
+            dispatchData?.errors?.[0] ??
+            'יצירת הקריאייטיב נכשלה',
         );
         return;
       }

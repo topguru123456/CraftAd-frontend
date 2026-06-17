@@ -116,24 +116,20 @@ export function CampaignCreativeProvider({ onCancel, onComplete, children }) {
     setDraft((prev) => ({ ...prev, ...patch }));
   }, []);
 
+  /* Server-side batching: one HTTP call dispatches all `count`
+   * variants. The backend picks N distinct ad-reference templates
+   * for the `example` slot in one shot, so each variant in the
+   * batch anchors against a different reference (per-call requests
+   * couldn't coordinate that). */
   const dispatchBatch = useCallback(async (projectId, count) => {
-    const settled = await Promise.allSettled(
-      Array.from({ length: count }, () =>
-        creativeGenerationsApi.dispatch({ projectId }),
-      ),
-    );
-    const uids = [];
-    const errors = [];
-    for (const result of settled) {
-      if (result.status === 'fulfilled') {
-        const { data, error } = result.value;
-        if (error) errors.push(error.message ?? 'דחיית קריאה');
-        else if (data?.uid) uids.push(data.uid);
-      } else {
-        errors.push(result.reason?.message ?? 'תקלת רשת');
-      }
+    const { data, error } = await creativeGenerationsApi.dispatch({
+      projectId,
+      count,
+    });
+    if (error) {
+      return { uids: [], errors: [error.message ?? 'דחיית קריאה'] };
     }
-    return { uids, errors };
+    return { uids: data?.uids ?? [], errors: data?.errors ?? [] };
   }, []);
 
   const buildProjectDraft = useCallback(() => {

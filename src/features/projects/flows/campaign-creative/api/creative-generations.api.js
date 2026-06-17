@@ -9,17 +9,28 @@ const ok = (data) => ({ data, error: null });
 const fail = (message) => ({ data: null, error: { message } });
 
 export const creativeGenerationsApi = {
-  /** POST dispatch — row updates via realtime when the webhook completes. */
-  async dispatch({ projectId } = {}) {
+  /** POST dispatch — kicks off `count` variants in one request.
+   *  Backend picks N distinct ad-reference templates server-side, so
+   *  variants in the same batch get different `example` slots. The
+   *  response is `{ uids: string[], errors: string[] }` — `errors`
+   *  is non-empty on partial failure; both arrays may be non-empty
+   *  in the partial-success case. */
+  async dispatch({ projectId, count = 1 } = {}) {
     if (!projectId) return fail('projectId is required');
-    const { data, error } = await apiClient.post('/generations/dispatch', { projectId });
-    if (error) return { data: null, error };
-    if (!data?.uid) return fail('שגיאה בהפעלת היצירה');
-    return ok({
-      uid:       data.uid,
-      projectId: data.projectId ?? projectId,
-      status:    data.status ?? 'dispatched',
+    if (!Number.isInteger(count) || count < 1) {
+      return fail('count must be a positive integer');
+    }
+    const { data, error } = await apiClient.post('/generations/dispatch', {
+      projectId,
+      count,
     });
+    if (error) return { data: null, error };
+    const uids = Array.isArray(data?.uids) ? data.uids : [];
+    const errors = Array.isArray(data?.errors) ? data.errors : [];
+    if (uids.length === 0) {
+      return fail(errors[0] ?? 'שגיאה בהפעלת היצירה');
+    }
+    return ok({ uids, errors, projectId });
   },
 
   async get(uid) {

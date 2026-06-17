@@ -104,19 +104,28 @@ export default function ProjectDetailPage() {
       return;
     }
 
-    const settled = await Promise.allSettled(
-      Array.from({ length: VARIANTS_PER_CLICK }, () =>
-        creativeGenerationsApi.dispatch({ projectId }),
-      ),
-    );
+    /* One batch call dispatches all variants; the backend coordinates
+     * distinct ad-reference templates across them. `data.uids` carries
+     * the variants that were accepted, `data.errors` carries any
+     * per-variant failures (partial success surfaces both). */
+    const { data, error } = await creativeGenerationsApi.dispatch({
+      projectId,
+      count: VARIANTS_PER_CLICK,
+    });
 
-    for (const result of settled) {
-      if (result.status === 'fulfilled' && result.value.data?.uid) {
-        variants.mergeVariant(variantPlaceholderFromDispatch(result.value.data));
-      }
+    const uids = data?.uids ?? [];
+    const errors = data?.errors ?? [];
+
+    for (const uid of uids) {
+      variants.mergeVariant(variantPlaceholderFromDispatch({ uid, projectId }));
     }
 
-    const errMsg = summarizeDispatchFailures(settled);
+    const errMsg = summarizeDispatchOutcome({
+      uids,
+      errors,
+      requested: VARIANTS_PER_CLICK,
+      topLevelError: error,
+    });
     if (errMsg) {
       toast.warning(errMsg, {
         description: 'לא כל הבקשות יצאו לדרך — ניתן לנסות שוב.',
@@ -272,18 +281,19 @@ function useProject(projectId) {
   };
 }
 
-function summarizeDispatchFailures(settled) {
-  const failures = settled.filter(
-    (r) => r.status === 'rejected' || (r.status === 'fulfilled' && r.value.error),
-  );
-  if (failures.length === 0) return null;
-  if (failures.length === settled.length) {
-    const first = failures[0];
-    const message =
-      first.status === 'fulfilled' ? first.value.error?.message : first.reason?.message;
-    return message ?? 'הוספת בקשות נכשלה';
+/* Picks the most actionable user-facing error message from a dispatch
+ * batch response: a top-level transport error wins, then the first
+ * per-variant error, then the partial-success summary, then null when
+ * everything landed. */
+function summarizeDispatchOutcome({ uids, errors, requested, topLevelError }) {
+  if (topLevelError) return topLevelError.message ?? 'הוספת בקשות נכשלה';
+  if (uids.length === 0) {
+    return errors[0] ?? 'הוספת בקשות נכשלה';
   }
-  return `${failures.length} מתוך ${VARIANTS_PER_CLICK} בקשות נכשלו`;
+  if (uids.length < requested) {
+    return `${requested - uids.length} מתוך ${requested} בקשות נכשלו`;
+  }
+  return null;
 }
 
 function Header({ name, brief, onBack }) {
