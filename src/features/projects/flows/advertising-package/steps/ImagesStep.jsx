@@ -63,11 +63,11 @@ export function ImagesStep() {
   const [aiOpen, setAiOpen] = useState(false);
 
   const currentImage = draft.images?.[0] ?? null;
-  const hasImage = Boolean(currentImage?.url);
 
   /* Same gating contract as campaign-creative: active brand required,
    * no concurrent upload, no in-flight submit. Missing image is no
-   * longer a gate — submit() auto-fabricates when the slot is empty. */
+   * longer a gate — the GCF dispatcher fabricates a product server-
+   * side when the slot arrives empty. */
   const canSubmit =
     !isSubmitting &&
     uploadStatus !== 'uploading' &&
@@ -147,8 +147,6 @@ export function ImagesStep() {
           />
         </div>
 
-        {!hasImage && <AutoImageNotice />}
-
         {/* Submit error inline — context's submit() sets this when the
           * project couldn't be created OR when BOTH image + copy
           * dispatches failed entirely (partial success doesn't
@@ -216,24 +214,6 @@ function Header({ onBack }) {
         בחרו תמונה שתשמש את הקריאייטיב — מהמכשיר, ממאגר התמונות, או דרך יצירה עם AI.
       </p>
     </header>
-  );
-}
-
-function AutoImageNotice() {
-  return (
-    <div
-      className="flex items-start gap-3 rounded-2xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-right"
-      role="status"
-    >
-      <span className="mt-0.5 shrink-0">
-        <MagicStar size="20" variant="Bold" color="#ED5699" />
-      </span>
-      <p className="text-sm text-ink leading-relaxed">
-        אם תמשיכו ללא תמונה, ה-AI ייצור עבורכם תמונת מוצר מקצועית באופן
-        אוטומטי בהתאם לתיאור והמותג. ניתן גם להעלות תמונה משלכם בכל אחת
-        מהאפשרויות לעיל.
-      </p>
-    </div>
   );
 }
 

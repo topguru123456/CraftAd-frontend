@@ -44,11 +44,11 @@ export function ImagesStep() {
   const [aiOpen, setAiOpen] = useState(false);
 
   const currentImage = draft.images?.[0] ?? null;
-  const hasImage = Boolean(currentImage?.url);
 
   /* Submit is gated only on having an active brand and on not being
-   * mid-upload/mid-submit. Missing image is no longer a gate — submit()
-   * auto-fabricates a product image when the slot is empty. */
+   * mid-upload/mid-submit. Missing image is no longer a gate — the
+   * GCF dispatcher fabricates a product server-side when the slot
+   * arrives empty. */
   const canSubmit =
     !isSubmitting &&
     uploadStatus !== 'uploading' &&
@@ -120,8 +120,6 @@ export function ImagesStep() {
           />
         </div>
 
-        {!hasImage && <AutoImageNotice />}
-
         {submitError && (
           <p className="text-sm text-danger text-right">
             {submitError.message ?? 'יצירת הקריאייטיב נכשלה. נסו שוב.'}
@@ -183,28 +181,6 @@ function Header({ onBack }) {
         בחרו תמונה שתשמש את הקריאייטיב — מהמכשיר, ממאגר התמונות, או דרך יצירה עם AI.
       </p>
     </header>
-  );
-}
-
-/* Informational notice shown when no image is staged — tells the user
- * the wizard won't block them and that the AI will fabricate a product
- * photo automatically. Soft brand-tinted styling so it reads as a
- * helpful hint, not an error. */
-function AutoImageNotice() {
-  return (
-    <div
-      className="flex items-start gap-3 rounded-2xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-right"
-      role="status"
-    >
-      <span className="mt-0.5 shrink-0">
-        <MagicStar size="20" variant="Bold" color="#ED5699" />
-      </span>
-      <p className="text-sm text-ink leading-relaxed">
-        אם תמשיכו ללא תמונה, ה-AI ייצור עבורכם תמונת מוצר מקצועית באופן
-        אוטומטי בהתאם לתיאור והמותג. ניתן גם להעלות תמונה משלכם בכל אחת
-        מהאפשרויות לעיל.
-      </p>
-    </div>
   );
 }
 
