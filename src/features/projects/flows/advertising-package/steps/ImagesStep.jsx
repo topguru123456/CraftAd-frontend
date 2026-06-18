@@ -251,7 +251,6 @@ function SubmitStageCaption({ stage }) {
 }
 
 const SUBMIT_STAGE_LABEL = Object.freeze({
-  [SUBMIT_STAGE.autoProductImage]: 'ה-AI מייצר עבורכם תמונת מוצר מקצועית...',
-  [SUBMIT_STAGE.creatingProject]:  'יוצר פרויקט...',
-  [SUBMIT_STAGE.dispatching]:      'מעביר את התוכן ליצירה...',
+  [SUBMIT_STAGE.creatingProject]: 'יוצר פרויקט...',
+  [SUBMIT_STAGE.dispatching]:     'מעביר את התוכן ליצירה...',
 });

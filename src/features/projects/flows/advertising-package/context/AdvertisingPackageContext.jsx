@@ -17,15 +17,15 @@ import {
   getTargetAudienceLabel,
 } from '@features/projects/config/project-fields.config';
 import { PLATFORMS_BY_ID } from '@features/projects/config/platforms.config';
-import { generateAutoProductImage } from '@features/projects/flows/shared';
 
-/* Submit pipeline stages — mirrors campaign-creative so the UI can
- * caption the spinner during the (slow) auto-image phase. */
+/* Submit pipeline stages — mirrors campaign-creative. Auto-image
+ * generation no longer happens FE-side; when the user submits without
+ * a product image, the dispatcher fabricates one server-side and the
+ * FE just dispatches with an empty product slot. */
 export const SUBMIT_STAGE = Object.freeze({
-  idle:             'idle',
-  autoProductImage: 'auto-product-image',
-  creatingProject:  'creating-project',
-  dispatching:      'dispatching',
+  idle:            'idle',
+  creatingProject: 'creating-project',
+  dispatching:     'dispatching',
 });
 
 /* Advertising-package wizard state.
@@ -246,27 +246,12 @@ export function AdvertisingPackageProvider({ onCancel, onComplete, children }) {
       setIsSubmitting(true);
       setSubmitError(null);
 
-      /* If the user skipped the image step, auto-generate a product
-       * photo before phase 1 so phases 1+2 run unchanged. The copy
-       * side benefits too — its prompt reads draft.images[0].url for
-       * visual context. */
-      let productImage = draft.images?.[0] ?? null;
-      if (!productImage?.url) {
-        setSubmitStage(SUBMIT_STAGE.autoProductImage);
-        const { data, error } = await generateAutoProductImage({ draft, brand });
-        if (error || !data?.url) {
-          finishSubmit(
-            error ?? { message: 'יצירת תמונת המוצר האוטומטית נכשלה. נסו שוב.' },
-          );
-          return { data: null, error: error ?? { message: 'auto-image failed' } };
-        }
-        productImage = data;
-        updateDraft({ images: [productImage] });
-      }
-
+      /* Product image is optional — when draft.images is empty, the
+       * dispatcher fabricates a product image server-side and the
+       * copywriting prompt simply runs without a visual reference. */
       // Phase 1: create the project row.
       setSubmitStage(SUBMIT_STAGE.creatingProject);
-      const projectDraft = { ...buildProjectDraft(), images: [productImage] };
+      const projectDraft = buildProjectDraft();
       const { data: project, error: projectError } = await projectsApi.create({
         brandId: brand.id,
         draft: projectDraft,
@@ -330,7 +315,7 @@ export function AdvertisingPackageProvider({ onCancel, onComplete, children }) {
         data: { projectId: project.id, imageUids, copyVariants },
       };
     },
-    [draft, buildProjectDraft, dispatchImageBatch, updateDraft, finishSubmit, onComplete],
+    [draft, buildProjectDraft, dispatchImageBatch, finishSubmit, onComplete],
   );
 
   const value = useMemo(

@@ -15,17 +15,16 @@ import {
   getTargetAudienceLabel,
 } from '@features/projects/config/project-fields.config';
 import { PLATFORMS_BY_ID } from '@features/projects/config/platforms.config';
-import { generateAutoProductImage } from '@features/projects/flows/shared';
 
 /* Submit pipeline stages. Surfaced to the UI so the step can render
- * an explanatory caption while the spinner is up (auto-image generation
- * adds 10-20s before project creation; without a stage label the user
- * just sees a long opaque spinner). */
+ * an explanatory caption while the spinner is up. Auto-image generation
+ * is NOT a FE stage anymore — when the user submits without a product
+ * image, the dispatcher fabricates one server-side and the FE just
+ * dispatches with an empty product slot. */
 export const SUBMIT_STAGE = Object.freeze({
-  idle:             'idle',
-  autoProductImage: 'auto-product-image',
-  creatingProject:  'creating-project',
-  dispatching:      'dispatching',
+  idle:            'idle',
+  creatingProject: 'creating-project',
+  dispatching:     'dispatching',
 });
 
 export const STEP_IDS = Object.freeze({
@@ -150,16 +149,11 @@ export function CampaignCreativeProvider({ onCancel, onComplete, children }) {
 
   /* Submit terminator.
    *
-   * If the user reached this step without picking a product image,
-   * we auto-generate one via the AI image endpoint before creating
-   * the project, so the existing GCF dispatcher contract (which
-   * requires a `product` image slot) is unchanged. The auto path is
-   * the single behavior difference vs. the previous gate-and-fail
-   * approach; everything downstream — project create + variant
-   * dispatch — is identical.
-   *
-   * Brand is passed in full (not just id) because the auto-prompt
-   * needs brand name + description for context. */
+   * The product image is OPTIONAL at this point. When the user didn't
+   * upload one, draft.images stays empty and the dispatcher's payload
+   * carries `product: ""` — the GCF dispatcher itself fabricates a
+   * product image server-side and proceeds with the variant
+   * generation. No FE-side AI call. */
   const submit = useCallback(
     async ({ brand }) => {
       if (!brand?.id) {
@@ -171,23 +165,8 @@ export function CampaignCreativeProvider({ onCancel, onComplete, children }) {
       setIsSubmitting(true);
       setSubmitError(null);
 
-      let productImage = draft.images?.[0] ?? null;
-
-      if (!productImage?.url) {
-        setSubmitStage(SUBMIT_STAGE.autoProductImage);
-        const { data, error } = await generateAutoProductImage({ draft, brand });
-        if (error || !data?.url) {
-          finishSubmit(
-            error ?? { message: 'יצירת תמונת המוצר האוטומטית נכשלה. נסו שוב.' },
-          );
-          return { data: null, error: error ?? { message: 'auto-image failed' } };
-        }
-        productImage = data;
-        updateDraft({ images: [productImage] });
-      }
-
       setSubmitStage(SUBMIT_STAGE.creatingProject);
-      const projectDraft = { ...buildProjectDraft(), images: [productImage] };
+      const projectDraft = buildProjectDraft();
       const { data: project, error: projectError } = await projectsApi.create({
         brandId: brand.id,
         draft: projectDraft,
@@ -216,7 +195,7 @@ export function CampaignCreativeProvider({ onCancel, onComplete, children }) {
       onComplete?.({ draft, projectId: project.id, uids });
       return { data: { projectId: project.id, uids } };
     },
-    [draft, dispatchBatch, buildProjectDraft, updateDraft, finishSubmit, onComplete],
+    [draft, dispatchBatch, buildProjectDraft, finishSubmit, onComplete],
   );
 
   const value = useMemo(
