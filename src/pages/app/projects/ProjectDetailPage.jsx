@@ -33,6 +33,12 @@ const SERVICE_TYPE = {
   productImages: 'product-images',
 };
 
+/* Per-project hard cap on image creatives. 9 = wizard's initial 3 +
+ * two more "Create more" clicks of 3 each. Beyond this, the
+ * Create-more button is hidden entirely (not just disabled). Failed
+ * variants count toward the cap — they cost API calls regardless. */
+const MAX_CREATIVES_PER_PROJECT = 9;
+
 export default function ProjectDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -77,11 +83,28 @@ export default function ProjectDetailPage() {
     error: null,
   });
 
+  /* Cap state. `imageCreativeCount` includes all statuses (pending,
+   * dispatched, ready, failed) — failed variants still consumed a
+   * dispatcher call, so they count toward the per-project budget.
+   * `remainingCreativeSlots` drives both the "hide Create more" gate
+   * and the dispatch-count clamp on the last click. */
+  const imageCreativeCount = variants.variants?.length ?? 0;
+  const remainingCreativeSlots = Math.max(
+    0,
+    MAX_CREATIVES_PER_PROJECT - imageCreativeCount,
+  );
+  const canDispatchMoreImages = remainingCreativeSlots > 0;
+
   const handleDispatchMore = useCallback(async () => {
     if (!projectId || dispatchMore.inFlight) return;
+    if (remainingCreativeSlots <= 0) return;
     setDispatchMore({ inFlight: true, error: null });
 
     if (isProductImages) {
+      /* The product-images dispatcher is fixed at 3 variants per call
+       * and doesn't accept a count param — accept a slight overshoot
+       * when remainingCreativeSlots is 1 or 2 (rare, only after a
+       * failed-variant cap math wrinkle). */
       const { data: rows, error } = await productImageGenerationsApi.dispatch({
         projectId,
       });
@@ -107,10 +130,15 @@ export default function ProjectDetailPage() {
     /* One batch call dispatches all variants; the backend coordinates
      * distinct ad-reference templates across them. `data.uids` carries
      * the variants that were accepted, `data.errors` carries any
-     * per-variant failures (partial success surfaces both). */
+     * per-variant failures (partial success surfaces both).
+     *
+     * Count is clamped to remainingCreativeSlots so the LAST click
+     * hits MAX exactly even when the user is at 7 or 8 (e.g., a
+     * previous failure consumed budget). */
+    const requested = Math.min(VARIANTS_PER_CLICK, remainingCreativeSlots);
     const { data, error } = await creativeGenerationsApi.dispatch({
       projectId,
-      count: VARIANTS_PER_CLICK,
+      count: requested,
     });
 
     const uids = data?.uids ?? [];
@@ -123,7 +151,7 @@ export default function ProjectDetailPage() {
     const errMsg = summarizeDispatchOutcome({
       uids,
       errors,
-      requested: VARIANTS_PER_CLICK,
+      requested,
       topLevelError: error,
     });
     if (errMsg) {
@@ -132,7 +160,14 @@ export default function ProjectDetailPage() {
       });
     }
     setDispatchMore({ inFlight: false, error: errMsg });
-  }, [projectId, dispatchMore.inFlight, isProductImages, variants, toast]);
+  }, [
+    projectId,
+    dispatchMore.inFlight,
+    isProductImages,
+    variants,
+    toast,
+    remainingCreativeSlots,
+  ]);
 
   // Optimistic bookmark toggle. Mirror copywriting's pattern: flip
   // the local row immediately, fire the PATCH, roll back if the
@@ -213,6 +248,7 @@ export default function ProjectDetailPage() {
             dispatchError={dispatchMore.error}
             isImageDispatching={dispatchMore.inFlight}
             onImageDispatchMore={handleDispatchMore}
+            canDispatchMoreImages={canDispatchMoreImages}
             onVariantEdit={(uid) => navigate(ROUTES.app.projects.editVariant(projectId, uid))}
             onCopyEdit={setEditingVariant}
             onVariantsRetry={project.reload}
@@ -228,6 +264,7 @@ export default function ProjectDetailPage() {
             dispatchError={dispatchMore.error}
             isDispatching={dispatchMore.inFlight}
             onDispatchMore={handleDispatchMore}
+            canDispatchMore={canDispatchMoreImages}
             onVariantEdit={(uid) => navigate(ROUTES.app.projects.editVariant(projectId, uid))}
             onRetry={project.reload}
             onToggleBookmark={handleToggleBookmark}
@@ -378,6 +415,7 @@ function ImageBranch({
   dispatchError,
   isDispatching,
   onDispatchMore,
+  canDispatchMore,
   onVariantEdit,
   onRetry,
   onToggleBookmark,
@@ -395,7 +433,9 @@ function ImageBranch({
         onEdit={onVariantEdit}
         onToggleBookmark={onToggleBookmark}
       />
-      <CreateMoreButton onClick={onDispatchMore} isDispatching={isDispatching} />
+      {canDispatchMore && (
+        <CreateMoreButton onClick={onDispatchMore} isDispatching={isDispatching} />
+      )}
     </>
   );
 }
@@ -409,14 +449,21 @@ function AdPackageBranch({
   dispatchError,
   isImageDispatching,
   onImageDispatchMore,
+  canDispatchMoreImages,
   onVariantEdit,
   onCopyEdit,
   onVariantsRetry,
   onToggleBookmark,
 }) {
-  const dispatchProps = tab === 'copy'
+  /* On the IMAGE tab the cap applies (hide button at 9). On the COPY
+   * tab there is no per-project cap today — copy variants can be
+   * regenerated freely. If the product later caps copy too, mirror
+   * the canDispatchMoreImages plumbing for copy. */
+  const isCopyTab = tab === 'copy';
+  const dispatchProps = isCopyTab
     ? { onClick: copywriting.dispatchMore, isDispatching: copywriting.isDispatchingMore }
     : { onClick: onImageDispatchMore, isDispatching: isImageDispatching };
+  const showDispatchMore = isCopyTab ? true : canDispatchMoreImages;
 
   return (
     <>
@@ -452,7 +499,7 @@ function AdPackageBranch({
         </>
       )}
 
-      <CreateMoreButton {...dispatchProps} />
+      {showDispatchMore && <CreateMoreButton {...dispatchProps} />}
     </>
   );
 }
