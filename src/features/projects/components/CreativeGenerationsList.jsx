@@ -72,7 +72,7 @@ export function CreativeGenerationsList({ view, query }) {
         className={cn(
           view === 'list'
             ? 'space-y-3'
-            : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5',
+            : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4 gap-5',
         )}
       >
         {visibleRows.map(({ project, preview }) => (
@@ -241,7 +241,7 @@ function SkeletonGrid({ view }) {
   const count = view === 'list' ? 4 : 6;
   const wrapperClass = view === 'list'
     ? 'space-y-3'
-    : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5';
+    : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4 gap-5';
   return (
     <div className={wrapperClass}>
       {Array.from({ length: count }).map((_, i) => (
