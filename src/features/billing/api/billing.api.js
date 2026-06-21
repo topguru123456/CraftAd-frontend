@@ -24,6 +24,7 @@ import { apiClient } from '@lib/apiClient';
  * redirect succeeds — the navigation kicks in first). */
 
 const ok = (data) => ({ data, error: null });
+const fail = (message) => ({ data: null, error: { message } });
 
 export const billingApi = {
   /* Preview a subscribe action. Returns either a confirm payload (with
@@ -124,9 +125,18 @@ export const billingApi = {
     return ok(data);
   },
 
-  /* POST /billing/tranzila/cancel — grace-cancel until period end. */
-  async cancelSubscription() {
-    const { data, error } = await apiClient.post('/billing/tranzila/cancel', {});
+  /* POST /billing/tranzila/cancel — grace-cancel until period end.
+   *
+   * The FE shows a two-step cancellation flow; this call lands once,
+   * carrying the reason picked in step 1 + optional free-text note.
+   * Reason IDs are English / kebab-case so analytics stays language-
+   * agnostic; Hebrew labels are kept on the FE. */
+  async cancelSubscription({ reason, note } = {}) {
+    if (!reason) return fail('reason is required');
+    const { data, error } = await apiClient.post('/billing/tranzila/cancel', {
+      reason,
+      ...(note?.trim() ? { note: note.trim() } : {}),
+    });
     if (error) return { data: null, error };
     return ok(data);
   },

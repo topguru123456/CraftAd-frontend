@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@lib/cn';
-import { CancelConfirmModal } from '@features/billing/components/CancelConfirmModal';
+import { CancelFlowModal } from '@features/billing/components/CancelFlowModal';
 import { supabase } from '@lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
 import { requestQuotaRefresh } from '@/contexts/QuotaContext';
@@ -10,10 +10,10 @@ import { SettingsSection } from './SettingsSection';
 /* Subscription panel on the account settings page.
  *
  * Used to redirect to the Stripe Customer Portal; now opens the in-app
- * CancelConfirmModal directly. Plan-change + card-update live on
- * /app/settings/payment via ManageSubscriptionButton — this section is
- * a focused "view current state + cancel" surface, not a general
- * management panel.
+ * CancelFlowModal directly (two-step: reason capture → final confirm).
+ * Plan-change + card-update live on /app/settings/payment via
+ * ManageSubscriptionButton — this section is a focused "view current
+ * state + cancel" surface, not a general management panel.
  *
  * Cancel-already-pending state hides the cancel button and surfaces
  * the period_end date so the user sees their grace window without
@@ -81,7 +81,7 @@ export function SubscriptionSettingsSection() {
         </p>
       </SettingsSection>
 
-      <CancelConfirmModal
+      <CancelFlowModal
         open={cancelOpen}
         onClose={() => setCancelOpen(false)}
         onCancelled={handleCancelled}

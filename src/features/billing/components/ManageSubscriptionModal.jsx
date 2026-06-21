@@ -7,7 +7,7 @@ import { supabase } from '@lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
 import { requestQuotaRefresh } from '@/contexts/QuotaContext';
 import { useSubscriptionInfo } from '@features/settings/hooks/useSubscriptionInfo';
-import { CancelConfirmModal } from './CancelConfirmModal';
+import { CancelFlowModal } from './CancelFlowModal';
 import { UpdateCardModal } from './UpdateCardModal';
 
 /* In-app subscription management — the panel that replaces the Stripe
@@ -110,7 +110,7 @@ export function ManageSubscriptionModal({ open, onClose }) {
         onUpdated={handleUpdated}
       />
 
-      <CancelConfirmModal
+      <CancelFlowModal
         open={activeAction === 'cancel'}
         onClose={() => setActiveAction(null)}
         onCancelled={handleCancelled}
