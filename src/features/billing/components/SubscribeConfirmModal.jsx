@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal } from '@components/ui';
 import { cn } from '@lib/cn';
 import { CURRENCY_SYMBOL } from '../config/plans.config';
@@ -43,6 +43,20 @@ export function SubscribeConfirmModal({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+
+  /* The component stays mounted across open transitions — after a
+   * successful subscribe we leave `busy=true` so the spinner persists
+   * during the parent's session-refresh + toast cleanup. Without this
+   * effect, the next time the modal opens (e.g., user picks a
+   * different plan after subscribing) the stale `busy=true` would
+   * render a phantom spinner before they click confirm. Reset
+   * whenever `open` goes false. */
+  useEffect(() => {
+    if (!open) {
+      setBusy(false);
+      setError(null);
+    }
+  }, [open]);
 
   const handleClose = () => {
     if (busy) return;

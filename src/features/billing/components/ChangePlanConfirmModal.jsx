@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal } from '@components/ui';
 import { cn } from '@lib/cn';
 import { CURRENCY_SYMBOL, getPlanById } from '../config/plans.config';
@@ -49,6 +49,21 @@ export function ChangePlanConfirmModal({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+
+  /* The component stays mounted across open transitions — the parent
+   * just flips `confirmState` null/non-null. After a successful
+   * confirm we intentionally leave `busy=true` so the spinner persists
+   * during the parent's session-refresh + toast cleanup. Without this
+   * effect, the next time the user opens the modal (e.g., picks a
+   * different plan) the stale `busy=true` would render a phantom
+   * spinner before they even click confirm. Reset whenever `open`
+   * goes false. */
+  useEffect(() => {
+    if (!open) {
+      setBusy(false);
+      setError(null);
+    }
+  }, [open]);
 
   if (!plan) return null;
 
