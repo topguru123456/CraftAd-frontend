@@ -5,13 +5,45 @@ import { CURRENCY_SYMBOL } from '../config/plans.config';
 /* Single pricing card.
  *
  * `isCurrent` is true only when BOTH plan.id AND billingCycle match the
- * user's active subscription tuple — toggling cycles flips the same plan
- * back to "selectable" because that would be a real Stripe sub change.
+ * user's active subscription tuple — toggling cycles flips the same
+ * plan back to "selectable" because that would be a real plan change.
  *
- * Active card → solid pink CTA labelled "המסלול שלך", non-clickable.
- * Inactive   → white outline CTA labelled "בחירה".
+ * `isCanceled` only matters together with `isCurrent`. When the user
+ * cancelled their plan but is still inside the grace period
+ * (cancel_at_period_end=true, plan_id still set), the card is the
+ * "current plan" technically — but the CTA flips to a resume action
+ * and we show the grace-end date above it. Without this state the
+ * cancelled user just saw "המסלול שלך" with a disabled CTA — no
+ * indication anything had changed.
+ *
+ * Active uncancelled  → solid pink CTA labelled "המסלול שלך", non-clickable.
+ * Active cancelled    → solid pink CTA labelled "המשך מנוי", CLICKABLE,
+ *                       with a small grace-end banner above.
+ * Inactive            → white outline CTA labelled "בחירה".
  */
-export function PlanCard({ plan, billingCycle, isCurrent, isSelecting, isLocked, onSelect }) {
+function formatHebrewDate(unixSeconds) {
+  if (!unixSeconds) return null;
+  const date = new Date(unixSeconds * 1000);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat('he-IL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
+
+export function PlanCard({
+  plan,
+  billingCycle,
+  isCurrent,
+  isCanceled,
+  periodEndUnix,
+  isSelecting,
+  isLocked,
+  onSelect,
+}) {
+  const showCanceledBanner = isCurrent && isCanceled;
+  const periodEndLabel = showCanceledBanner ? formatHebrewDate(periodEndUnix) : null;
   const cyclePricing = plan.pricing[billingCycle];
 
   return (
@@ -54,21 +86,45 @@ export function PlanCard({ plan, billingCycle, isCurrent, isSelecting, isLocked,
         {plan.description}
       </p>
 
-      {/* CTA. Three states:
-          - current plan: pink-gradient, "המסלול שלך", non-interactive
-          - selecting: spinner while we mint the Stripe Checkout URL
-          - locked: another card is selecting, gray out to avoid double-fire
-          - default: white outline, "בחירה" */}
+      {/* Cancellation banner — only shown when this is the user's
+          current plan AND it has cancel_at_period_end=true. Pinned
+          above the CTA so the user reads "this plan is ending" before
+          they see the resume button. */}
+      {showCanceledBanner && (
+        <div
+          role="status"
+          className="mb-2.5 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs sm:text-sm text-rose-700 leading-snug text-center"
+        >
+          {periodEndLabel
+            ? `המנוי בוטל. הגישה תסתיים ב-${periodEndLabel}. לחצו לחידוש.`
+            : 'המנוי בוטל. לחצו לחידוש.'}
+        </div>
+      )}
+
+      {/* CTA. Four states:
+          - current uncancelled : pink-gradient, "המסלול שלך", non-interactive
+          - current cancelled   : pink-gradient, "המשך מנוי", CLICKABLE (opens resume modal)
+          - selecting           : spinner while the change-plan request is in flight
+          - locked              : another card is selecting, gray out to avoid double-fire
+          - default             : white outline, "בחירה" */}
       <button
         type="button"
-        onClick={isCurrent || isSelecting || isLocked ? undefined : onSelect}
-        disabled={isCurrent || isSelecting || isLocked}
-        aria-disabled={isCurrent || isSelecting || isLocked}
+        onClick={
+          isSelecting || isLocked
+            ? undefined
+            : isCurrent && !isCanceled
+              ? undefined
+              : onSelect
+        }
+        disabled={isSelecting || isLocked || (isCurrent && !isCanceled)}
+        aria-disabled={isSelecting || isLocked || (isCurrent && !isCanceled)}
         className={cn(
           'w-full font-bold py-2.5 rounded-xl transition-colors mb-4',
           'inline-flex items-center justify-center gap-2',
           isCurrent
-            ? 'bg-gradient-to-l from-brand-400 to-brand-500 text-white cursor-default shadow-[0_8px_18px_rgba(215,78,124,0.35)]'
+            ? isCanceled
+              ? 'bg-gradient-to-l from-brand-400 to-brand-500 text-white shadow-[0_8px_18px_rgba(215,78,124,0.35)] hover:opacity-95'
+              : 'bg-gradient-to-l from-brand-400 to-brand-500 text-white cursor-default shadow-[0_8px_18px_rgba(215,78,124,0.35)]'
             : isSelecting
               ? 'bg-brand-500 text-white cursor-wait'
               : isLocked
@@ -84,7 +140,9 @@ export function PlanCard({ plan, billingCycle, isCurrent, isSelecting, isLocked,
         )}
         <span>
           {isCurrent
-            ? 'המסלול שלך'
+            ? isCanceled
+              ? 'המשך מנוי'
+              : 'המסלול שלך'
             : isSelecting
               ? 'פותח תשלום...'
               : 'בחירה'}

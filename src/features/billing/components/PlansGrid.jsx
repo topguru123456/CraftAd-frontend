@@ -5,10 +5,26 @@ import { PLANS } from '../config/plans.config';
  * (Starter) on the left — matches the screenshot's right-to-left tier
  * ordering. On mobile collapses to a single column.
  *
- * `currentPlan` = { planId, cycle } from useCurrentPlan. A card is marked
- * current only when both fields match — toggling cycle re-evaluates.
+ * `currentPlan` = { planId, cycle } from useCurrentPlan. A card is
+ * marked current only when both fields match — toggling cycle
+ * re-evaluates.
+ *
+ * `cancelAtPeriodEnd` + `periodEndUnix` come from useSubscriptionInfo
+ * and flow only to the card that matches the current tuple. Without
+ * them, a cancelled-but-still-in-grace user saw their plan marked
+ * "current" with no visible indication of the pending cancellation,
+ * and couldn't click to resume because the current-plan card disables
+ * its CTA. The card uses them to render a grace-end banner + a
+ * clickable "המשך מנוי" resume CTA in that exact case.
  */
-export function PlansGrid({ billingCycle, currentPlan, onSelect, selecting }) {
+export function PlansGrid({
+  billingCycle,
+  currentPlan,
+  cancelAtPeriodEnd,
+  periodEndUnix,
+  onSelect,
+  selecting,
+}) {
   return (
     <div
       dir="rtl"
@@ -29,6 +45,8 @@ export function PlansGrid({ billingCycle, currentPlan, onSelect, selecting }) {
             plan={plan}
             billingCycle={billingCycle}
             isCurrent={isCurrent}
+            isCanceled={isCurrent && Boolean(cancelAtPeriodEnd)}
+            periodEndUnix={isCurrent ? periodEndUnix : null}
             isSelecting={isSelecting}
             isLocked={isLocked && !isSelecting}
             onSelect={() => onSelect?.(plan)}

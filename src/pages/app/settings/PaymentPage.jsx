@@ -140,6 +140,8 @@ export default function PaymentPage() {
         <PlansGrid
           billingCycle={billingCycle}
           currentPlan={currentPlan}
+          cancelAtPeriodEnd={info.cancelAtPeriodEnd}
+          periodEndUnix={info.periodEndUnix}
           onSelect={onSelectPlan}
           selecting={selecting}
         />
