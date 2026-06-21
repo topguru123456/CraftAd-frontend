@@ -8,7 +8,12 @@ const COLS = [
   { key: 'actions', label: 'פעולות' },
 ];
 
-export function InvoicesTable({ invoices, loading, error }) {
+/* `emptyMessage` overrides the default empty-state copy.
+ * InvoicePage passes a status-aware message (trialing → "first invoice
+ * after DD/MM", past_due → "update card", canceled → ...) so the
+ * empty state explains WHY rather than just saying "no invoices".
+ * Falls back to the generic copy when no override is given. */
+export function InvoicesTable({ invoices, loading, error, emptyMessage }) {
   if (loading) {
     return (
       <div className="rounded-3xl border border-line bg-white shadow-soft border-e-4 border-e-danger p-8">
@@ -30,8 +35,8 @@ export function InvoicesTable({ invoices, loading, error }) {
   if (!invoices?.length) {
     return (
       <div className="rounded-3xl border border-line bg-white shadow-soft border-e-4 border-e-danger p-10">
-        <p className="text-center text-ink-muted text-sm">
-          אין חשבוניות להצגה עדיין.
+        <p className="text-center text-ink-muted text-sm leading-relaxed">
+          {emptyMessage ?? 'אין חשבוניות להצגה עדיין.'}
         </p>
       </div>
     );
