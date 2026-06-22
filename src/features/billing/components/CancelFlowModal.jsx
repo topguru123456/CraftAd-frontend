@@ -444,52 +444,58 @@ function OfferPlanCard({ planName, features, fullPrice, discountedPrice }) {
     <section
       className={cn(
         'relative rounded-2xl bg-brand-50/40 border border-brand-200/60',
-        'p-4 sm:p-5 space-y-4',
+        'p-5 sm:p-6 space-y-5',
       )}
     >
       {/* RTL header row.
        *   DOM[0] = visual RIGHT  → price block (strikethrough + discounted)
-       *   DOM[1] = visual LEFT   → plan name + badges + subtitle
-       * This matches the design sample. Reversing them swaps the columns
-       * because in `dir="rtl"` the first DOM child renders at inline-start
-       * which is the visual right edge. */}
-      <div className="flex items-start justify-between gap-3">
+       *   DOM[1] = visual LEFT   → plan name (own row) + badges (own row) + subtitle
+       * Plan name + badges + subtitle stack vertically in their column. */}
+      <div className="flex items-start justify-between gap-4">
         <div className="text-right shrink-0">
-          <p className="text-sm text-ink-soft line-through tabular-nums leading-tight">
+          <p className="text-base text-ink-soft line-through tabular-nums leading-tight">
             {fullPrice}
             {CURRENCY_SYMBOL} / חודש
           </p>
-          <p className="text-[28px] font-extrabold text-brand-600 tabular-nums leading-tight">
+          <p className="text-[36px] font-extrabold text-brand-600 tabular-nums leading-tight">
             <span>{discountedPrice}</span>
             <span className="ms-1">{CURRENCY_SYMBOL}</span>
-            <span className="text-base font-bold text-ink ms-1">/ חודש</span>
+            <span className="text-lg font-bold text-ink ms-1">/ חודש</span>
           </p>
         </div>
 
-        <div className="space-y-1.5 text-right">
+        <div className="space-y-2 text-right">
+          {/* Plan name on its own row */}
+          <h3 className="text-2xl font-extrabold text-ink leading-tight">
+            {planName} Plan
+          </h3>
+
+          {/* Badges on their own row.
+           * DOM[0] = visual right = "50% הנחה" — text-only (no bg), brand-pink.
+           * DOM[1] = visual left  = "מבצע מוגבל" — rounded-md filled tag. */}
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-lg font-extrabold text-ink">{planName} Plan</h3>
-            <span className="inline-flex items-center rounded-full bg-brand-500 text-white text-[11px] font-bold px-2 py-0.5">
+            <span className="text-sm font-extrabold text-brand-500">
               {RETENTION_DISCOUNT_PCT}% הנחה
             </span>
-            <span className="inline-flex items-center rounded-full bg-rose-100 text-brand-600 text-[11px] font-bold px-2 py-0.5">
+            <span className="inline-flex items-center rounded-md bg-rose-100 text-brand-600 text-sm font-bold px-2.5 py-1">
               מבצע מוגבל
             </span>
           </div>
-          <p className="text-xs text-ink-muted">
+
+          <p className="text-sm text-ink-muted leading-relaxed">
             החיוב יתחדש במחיר הרגיל לאחר חודש אחד.
           </p>
         </div>
       </div>
 
       {features.length > 0 && (
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
           {features.map((feature) => (
             <li
               key={feature}
-              className="flex items-center gap-2 text-sm text-ink"
+              className="flex items-center gap-2 text-base text-ink"
             >
-              <TickIcon className="h-3.5 w-3.5 shrink-0 text-brand-500" />
+              <TickIcon className="h-4 w-4 shrink-0 text-brand-500" />
               <span className="text-right">{feature}</span>
             </li>
           ))}
