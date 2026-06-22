@@ -1,9 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal } from '@components/ui';
 import { cn } from '@lib/cn';
+import { useAuth } from '@features/auth/hooks/useAuth';
+import { useToast } from '@/contexts/ToastContext';
+import { supabase } from '@lib/supabase';
+import { requestQuotaRefresh } from '@/contexts/QuotaContext';
+import TickIcon from '@assets/icons/tick.svg?react';
 import { billingApi } from '../api/billing.api';
+import {
+  CURRENCY_SYMBOL,
+  getPlanById,
+} from '../config/plans.config';
 
-/* Two-step subscription-cancellation flow.
+/* Three-step subscription-cancellation flow.
  *
  *   Step 1 — REASON CAPTURE: the user picks ONE of the predefined
  *            reasons + an optional free-text note (required when
@@ -11,22 +20,21 @@ import { billingApi } from '../api/billing.api';
  *            IDs are English / kebab-case so analytics + future
  *            retention routing stay language-agnostic.
  *
- *   Step 2 — FINAL CONFIRM: grace-period-end explanation + the
- *            actual cancel call. Single endpoint receives both
- *            steps' data in one request.
+ *   Step 2 — DISCOUNT OFFER: 50% off the next renewal charge. One
+ *            per user lifetime — skipped entirely when
+ *            `user_metadata.retention_discount_used` is already true.
+ *            Accepting calls /billing/tranzila/apply-retention-discount
+ *            which clears any pending cancel state and writes the
+ *            discount the renewal runner consumes on the next sweep.
+ *            Declining advances to step 3.
  *
- * Why a multi-step modal instead of the original one-click cancel:
- *   - Churn-analytics: knowing WHY users leave is the input to every
- *     retention decision we'll make later (discounts, pause-instead-
- *     of-cancel, feature priority).
- *   - Light retention friction: a reason picker before the final
- *     confirm is the floor of any retention flow — even without an
- *     offer it nudges users to think twice. Discount/pause logic
- *     comes in a later turn and reads `cancellation_reason` to route.
+ *   Step 3 — FINAL CONFIRM: grace-period-end explanation + the actual
+ *            cancel call. Reached when the user declined the offer OR
+ *            already used their discount.
  *
- * The same modal stays mounted across both steps so the user sees
- * a smooth step transition rather than two backdrops. Reset on
- * close so a re-open starts at step 1 with a fresh form. */
+ * The same modal stays mounted across all steps so the user sees a
+ * smooth transition rather than three backdrops. Reset on close so a
+ * re-open starts fresh. */
 
 const REASONS = [
   { id: 'too_expensive',   label: 'המחיר גבוה לי' },
@@ -38,6 +46,7 @@ const REASONS = [
 ];
 
 const NOTE_MAX_LENGTH = 1000;
+const RETENTION_DISCOUNT_PCT = 50;
 
 function formatHebrewDate(unixSeconds) {
   if (!unixSeconds) return null;
@@ -51,15 +60,21 @@ function formatHebrewDate(unixSeconds) {
 }
 
 export function CancelFlowModal({ open, onClose, onCancelled, periodEndUnix }) {
-  const [step, setStep] = useState('reason'); // 'reason' | 'confirm'
+  const { user } = useAuth();
+  const toast = useToast();
+  const meta = user?.user_metadata ?? {};
+  const planId = meta.subscription_plan_id ?? 'starter';
+  const cycle = meta.subscription_cycle ?? 'monthly';
+  const skipOffer = meta.retention_discount_used === true;
+
+  const [step, setStep] = useState('reason'); // 'reason' | 'offer' | 'confirm'
   const [reasonId, setReasonId] = useState(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
   /* Reset the flow whenever the modal opens — re-entry should start
-   * on step 1 with a fresh form, not resume mid-flow. Tied to `open`
-   * (not unmount) so quick close/re-open doesn't carry state. */
+   * on step 1 with a fresh form, not resume mid-flow. */
   useEffect(() => {
     if (!open) {
       setStep('reason');
@@ -73,7 +88,7 @@ export function CancelFlowModal({ open, onClose, onCancelled, periodEndUnix }) {
   const formattedDate = formatHebrewDate(periodEndUnix);
   const noteRequired = reasonId === 'other';
   const noteTrimmed = note.trim();
-  const canProceedToConfirm =
+  const canProceedToOffer =
     Boolean(reasonId) && (!noteRequired || noteTrimmed.length > 0);
 
   const handleClose = () => {
@@ -82,19 +97,48 @@ export function CancelFlowModal({ open, onClose, onCancelled, periodEndUnix }) {
     onClose?.();
   };
 
-  const handleProceed = () => {
-    if (!canProceedToConfirm) return;
+  const handleProceedFromReason = () => {
+    if (!canProceedToOffer) return;
     setError(null);
-    setStep('confirm');
+    setStep(skipOffer ? 'confirm' : 'offer');
   };
 
-  const handleBack = () => {
+  const handleBackToReason = () => {
     if (busy) return;
     setError(null);
     setStep('reason');
   };
 
-  const handleConfirm = async () => {
+  const handleAcceptOffer = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    const { error: err } = await billingApi.applyRetentionDiscount({
+      reason: reasonId,
+      note: noteTrimmed || undefined,
+    });
+    if (err) {
+      setError(err.message ?? 'הפעלת ההנחה נכשלה. נסו שוב.');
+      setBusy(false);
+      return;
+    }
+    /* Refresh the session so user_metadata reflects retention_discount_used
+     * = true (so the offer is hidden if the user clicks cancel again),
+     * + so the cancel flag is cleared if it was pending. Then close +
+     * surface the win as a success toast. */
+    await supabase.auth.refreshSession();
+    requestQuotaRefresh();
+    toast.success('ההנחה הופעלה! החיוב הבא יבוצע במחיר מוזל.');
+    onClose?.();
+  };
+
+  const handleDeclineOffer = () => {
+    if (busy) return;
+    setError(null);
+    setStep('confirm');
+  };
+
+  const handleConfirmCancel = async () => {
     if (busy || !reasonId) return;
     setBusy(true);
     setError(null);
@@ -107,9 +151,8 @@ export function CancelFlowModal({ open, onClose, onCancelled, periodEndUnix }) {
       setBusy(false);
       return;
     }
-    /* Leave busy=true while the parent runs its cleanup (refresh
-     * session, toast, close) so the confirm button stays in its
-     * spinner state during the visual transition. */
+    /* Leave busy=true while parent runs cleanup (refresh + toast +
+     * close); the useEffect resets on `open=false`. */
     onCancelled?.();
   };
 
@@ -123,7 +166,7 @@ export function CancelFlowModal({ open, onClose, onCancelled, periodEndUnix }) {
       showCloseButton={!busy}
     >
       <div dir="rtl" className="p-6 sm:p-8 space-y-5">
-        {step === 'reason' ? (
+        {step === 'reason' && (
           <ReasonStep
             reasonId={reasonId}
             onReasonChange={setReasonId}
@@ -132,22 +175,39 @@ export function CancelFlowModal({ open, onClose, onCancelled, periodEndUnix }) {
             noteRequired={noteRequired}
             error={error}
             onClose={handleClose}
-            onProceed={handleProceed}
-            canProceed={canProceedToConfirm}
+            onProceed={handleProceedFromReason}
+            canProceed={canProceedToOffer}
+            proceedLabel={skipOffer ? 'המשך' : 'המשך'}
           />
-        ) : (
+        )}
+        {step === 'offer' && (
+          <OfferStep
+            planId={planId}
+            cycle={cycle}
+            busy={busy}
+            error={error}
+            onBack={handleBackToReason}
+            onAccept={handleAcceptOffer}
+            onDecline={handleDeclineOffer}
+          />
+        )}
+        {step === 'confirm' && (
           <ConfirmStep
             formattedDate={formattedDate}
             busy={busy}
             error={error}
-            onBack={handleBack}
-            onConfirm={handleConfirm}
+            onBack={skipOffer ? handleBackToReason : () => setStep('offer')}
+            onConfirm={handleConfirmCancel}
           />
         )}
       </div>
     </Modal>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Step 1: reason picker                                               */
+/* ------------------------------------------------------------------ */
 
 function ReasonStep({
   reasonId,
@@ -159,6 +219,7 @@ function ReasonStep({
   onClose,
   onProceed,
   canProceed,
+  proceedLabel,
 }) {
   return (
     <>
@@ -248,7 +309,7 @@ function ReasonStep({
             'transition-opacity',
           )}
         >
-          המשך
+          {proceedLabel}
         </button>
       </div>
     </>
@@ -280,12 +341,161 @@ function ReasonRadio({ label, value, selected, onSelect }) {
         {selected && <span className="h-2.5 w-2.5 rounded-full bg-brand-500" />}
       </span>
       <span className="flex-1 text-sm font-medium text-ink">{label}</span>
-      {/* `value` is bound to the option's id; kept off-DOM so we don't
-          duplicate it in the visible label */}
       <span className="sr-only">{value}</span>
     </button>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Step 2: discount offer                                              */
+/* ------------------------------------------------------------------ */
+
+function OfferStep({ planId, cycle, busy, error, onBack, onAccept, onDecline }) {
+  const plan = useMemo(() => getPlanById(planId), [planId]);
+  /* Display price (per-month) — yearly subscribers see the per-month
+   * equivalent (e.g. ₪62/mo for Starter yearly) which is what matches
+   * the user's mental model from the pricing page. Math.floor so the
+   * user benefits on half-shekel rounding (e.g. ₪119/mo → ₪59/mo). */
+  const fullPrice = plan?.pricing?.[cycle]?.price ?? 0;
+  const discountedPrice = Math.floor((fullPrice * (100 - RETENTION_DISCOUNT_PCT)) / 100);
+
+  return (
+    <>
+      <header className="text-right space-y-2">
+        <p className="text-sm font-bold text-brand-500">
+          רגע לפני שמבטלים, יש לנו הצעה
+        </p>
+        <h2 className="text-xl sm:text-2xl font-extrabold text-ink">
+          קבלו {RETENTION_DISCOUNT_PCT}% הנחה על החיוב הבא
+        </h2>
+        <p className="text-sm sm:text-base text-ink-muted leading-relaxed">
+          לא רוצים להיפרד. כלקוחות מוערכים של Craftad, נשמח להציע לכם{' '}
+          {RETENTION_DISCOUNT_PCT}% הנחה על התשלום הבא. המשיכו ליצור מודעות יפות
+          וממירות בחצי מהמחיר.
+        </p>
+      </header>
+
+      <OfferPlanCard
+        planName={plan?.name ?? 'Plan'}
+        features={plan?.features ?? []}
+        fullPrice={fullPrice}
+        discountedPrice={discountedPrice}
+      />
+
+      {error && (
+        <div className="rounded-card border border-danger/20 bg-danger/5 p-3">
+          <p className="text-sm text-danger">{error}</p>
+        </div>
+      )}
+
+      <div className="space-y-3 pt-1">
+        <button
+          type="button"
+          onClick={onAccept}
+          disabled={busy}
+          className={cn(
+            'w-full inline-flex items-center justify-center gap-2',
+            'rounded-xl h-12 font-bold text-base',
+            'bg-brand-gradient text-white shadow-brand',
+            busy ? 'cursor-wait opacity-95' : 'hover:opacity-95',
+            'transition-opacity',
+          )}
+        >
+          {busy && (
+            <span
+              aria-hidden="true"
+              className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
+            />
+          )}
+          <span>{busy ? 'מפעיל הנחה…' : 'כן, אני רוצה את ההנחה'}</span>
+        </button>
+
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onBack}
+            disabled={busy}
+            className={cn(
+              'text-xs text-ink-soft underline-offset-2 hover:underline transition-colors',
+              busy && 'opacity-60 cursor-not-allowed',
+            )}
+          >
+            הקודם
+          </button>
+          <button
+            type="button"
+            onClick={onDecline}
+            disabled={busy}
+            className={cn(
+              'text-sm font-bold text-ink underline-offset-2 hover:underline transition-colors',
+              busy && 'opacity-60 cursor-not-allowed',
+            )}
+          >
+            לא תודה, להמשיך לביטול
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function OfferPlanCard({ planName, features, fullPrice, discountedPrice }) {
+  return (
+    <section
+      className={cn(
+        'relative rounded-2xl bg-brand-50/40 border border-brand-200/60',
+        'p-4 sm:p-5 space-y-4',
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-lg font-extrabold text-ink">{planName} Plan</h3>
+            <span className="inline-flex items-center rounded-full bg-brand-500 text-white text-[11px] font-bold px-2 py-0.5">
+              {RETENTION_DISCOUNT_PCT}% הנחה
+            </span>
+            <span className="inline-flex items-center rounded-full bg-rose-100 text-brand-600 text-[11px] font-bold px-2 py-0.5">
+              מבצע מוגבל
+            </span>
+          </div>
+          <p className="text-xs text-ink-muted">
+            החיוב יתחדש במחיר הרגיל לאחר חודש אחד.
+          </p>
+        </div>
+
+        <div className="text-left shrink-0">
+          <p className="text-sm text-ink-soft line-through tabular-nums leading-tight">
+            {fullPrice}
+            {CURRENCY_SYMBOL} / חודש
+          </p>
+          <p className="text-[28px] font-extrabold text-brand-600 tabular-nums leading-tight">
+            <span>{discountedPrice}</span>
+            <span className="ms-1">{CURRENCY_SYMBOL}</span>
+            <span className="text-base font-bold text-ink ms-1">/ חודש</span>
+          </p>
+        </div>
+      </div>
+
+      {features.length > 0 && (
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+          {features.map((feature) => (
+            <li
+              key={feature}
+              className="flex items-center gap-2 text-sm text-ink"
+            >
+              <TickIcon className="h-3.5 w-3.5 shrink-0 text-brand-500" />
+              <span className="text-right">{feature}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Step 3: final confirm                                               */
+/* ------------------------------------------------------------------ */
 
 function ConfirmStep({ formattedDate, busy, error, onBack, onConfirm }) {
   return (

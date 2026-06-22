@@ -148,6 +148,24 @@ export const billingApi = {
     return ok(data);
   },
 
+  /* POST /billing/tranzila/apply-retention-discount — accept the 50%
+   * offer from step 2 of the cancel flow. Passes through the cancel
+   * reason captured in step 1 so the server can record what the user
+   * was almost-canceling for. The BE writes the discount fields on
+   * user_metadata + clears any pending cancel state; the renewal
+   * runner consumes the discount on the next sweep after period_end. */
+  async applyRetentionDiscount({ reason, note } = {}) {
+    const { data, error } = await apiClient.post(
+      '/billing/tranzila/apply-retention-discount',
+      {
+        ...(reason ? { reason } : {}),
+        ...(note?.trim() ? { note: note.trim() } : {}),
+      },
+    );
+    if (error) return { data: null, error };
+    return ok(data);
+  },
+
   /* DEV BYPASS — REMOVE BEFORE PROD.
    * POST /billing/tranzila/bypass-trial. Gated by TRANZILA_BYPASS_ENABLED
    * on the BE — calling this without the env flag set returns 403. Used
