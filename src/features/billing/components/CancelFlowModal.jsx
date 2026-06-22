@@ -447,8 +447,26 @@ function OfferPlanCard({ planName, features, fullPrice, discountedPrice }) {
         'p-4 sm:p-5 space-y-4',
       )}
     >
+      {/* RTL header row.
+       *   DOM[0] = visual RIGHT  → price block (strikethrough + discounted)
+       *   DOM[1] = visual LEFT   → plan name + badges + subtitle
+       * This matches the design sample. Reversing them swaps the columns
+       * because in `dir="rtl"` the first DOM child renders at inline-start
+       * which is the visual right edge. */}
       <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1.5">
+        <div className="text-right shrink-0">
+          <p className="text-sm text-ink-soft line-through tabular-nums leading-tight">
+            {fullPrice}
+            {CURRENCY_SYMBOL} / חודש
+          </p>
+          <p className="text-[28px] font-extrabold text-brand-600 tabular-nums leading-tight">
+            <span>{discountedPrice}</span>
+            <span className="ms-1">{CURRENCY_SYMBOL}</span>
+            <span className="text-base font-bold text-ink ms-1">/ חודש</span>
+          </p>
+        </div>
+
+        <div className="space-y-1.5 text-right">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-lg font-extrabold text-ink">{planName} Plan</h3>
             <span className="inline-flex items-center rounded-full bg-brand-500 text-white text-[11px] font-bold px-2 py-0.5">
@@ -460,18 +478,6 @@ function OfferPlanCard({ planName, features, fullPrice, discountedPrice }) {
           </div>
           <p className="text-xs text-ink-muted">
             החיוב יתחדש במחיר הרגיל לאחר חודש אחד.
-          </p>
-        </div>
-
-        <div className="text-left shrink-0">
-          <p className="text-sm text-ink-soft line-through tabular-nums leading-tight">
-            {fullPrice}
-            {CURRENCY_SYMBOL} / חודש
-          </p>
-          <p className="text-[28px] font-extrabold text-brand-600 tabular-nums leading-tight">
-            <span>{discountedPrice}</span>
-            <span className="ms-1">{CURRENCY_SYMBOL}</span>
-            <span className="text-base font-bold text-ink ms-1">/ חודש</span>
           </p>
         </div>
       </div>
