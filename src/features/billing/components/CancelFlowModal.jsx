@@ -465,23 +465,25 @@ function OfferPlanCard({ planName, features, fullPrice, discountedPrice }) {
         </div>
 
         <div className="space-y-2 text-right">
-          {/* Plan name on its own row */}
-          <h3 className="text-2xl font-extrabold text-ink leading-tight">
-            {planName} Plan
-          </h3>
-
-          {/* Badges on their own row.
+          {/* Row 1: badges.
            * DOM[0] = visual right = "50% הנחה" — text-only (no bg), brand-pink.
-           * DOM[1] = visual left  = "מבצע מוגבל" — rounded-md filled tag. */}
+           * DOM[1] = visual left  = "מבצע מוגבל" — brand-gradient fill,
+           *                                       white text, rounded-md. */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-extrabold text-brand-500">
               {RETENTION_DISCOUNT_PCT}% הנחה
             </span>
-            <span className="inline-flex items-center rounded-md bg-rose-100 text-brand-600 text-sm font-bold px-2.5 py-1">
+            <span className="inline-flex items-center rounded-md bg-brand-gradient text-white text-sm font-bold px-2.5 py-1 shadow-brand">
               מבצע מוגבל
             </span>
           </div>
 
+          {/* Row 2: plan name (now under the badges) */}
+          <h3 className="text-2xl font-extrabold text-ink leading-tight">
+            {planName} Plan
+          </h3>
+
+          {/* Row 3: subtitle */}
           <p className="text-sm text-ink-muted leading-relaxed">
             החיוב יתחדש במחיר הרגיל לאחר חודש אחד.
           </p>
