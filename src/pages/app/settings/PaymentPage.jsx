@@ -6,6 +6,7 @@ import {
   PlansGrid,
   PLANS,
   ChangePlanConfirmModal,
+  TestModeBanner,
   billingApi,
   useCurrentPlan,
 } from '@features/billing';
@@ -128,6 +129,8 @@ export default function PaymentPage() {
       style={{ backgroundImage: `url(${HeroBg})` }}
     >
       <div className="relative mx-auto w-full max-w-[1500px] px-4 sm:px-8 lg:px-10 py-6 sm:py-8 flex flex-col gap-6 sm:gap-7 md:h-full">
+        <TestModeBanner />
+
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <ManageSubscriptionButton />
           <div className="flex-1 flex justify-center">

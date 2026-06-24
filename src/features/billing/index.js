@@ -5,6 +5,7 @@ export { ManageSubscriptionButton } from './components/ManageSubscriptionButton'
 export { ManageSubscriptionModal } from './components/ManageSubscriptionModal';
 export { SubscribeConfirmModal } from './components/SubscribeConfirmModal';
 export { CancelFlowModal } from './components/CancelFlowModal';
+export { TestModeBanner } from './components/TestModeBanner';
 export { ChangePlanConfirmModal } from './components/ChangePlanConfirmModal';
 export { UpdateCardModal } from './components/UpdateCardModal';
 export { useCurrentPlan } from './hooks/useCurrentPlan';

@@ -18,6 +18,12 @@ export const env = {
   // calls POST /billing/tranzila/bypass-trial. The BE has its own gate
   // (TRANZILA_BYPASS_ENABLED) — both must be true for the bypass to fire.
   tranzilaBypassEnabled: import.meta.env.VITE_TRANZILA_BYPASS_ENABLED === 'true',
+  // PAYMENT TEST MODE — REMOVE BEFORE PROD.
+  // When true, the FE displays ₪1 prices on the pricing page + shows a
+  // visible TEST MODE banner. Pairs with backend env BILLING_TEST_MODE
+  // which overrides real charges to ₪1 — both must be true for an
+  // end-to-end consistent test (BE flag is the authoritative one).
+  billingTestMode: import.meta.env.VITE_BILLING_TEST_MODE === 'true',
   isDev: import.meta.env.DEV,
   isProd: import.meta.env.PROD,
 };
