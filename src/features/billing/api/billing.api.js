@@ -117,6 +117,7 @@ export const billingApi = {
       planId,
       cycle,
       kind,
+      frontendOrigin: window.location.origin,
     });
     if (error) return { data: null, error };
     if (!data?.iframeUrl || !data?.fields) {

@@ -9,20 +9,18 @@ import { Spinner } from '@components/ui';
  * visible <iframe name=<iframe-name>>. On mount, auto-submit the form;
  * the response renders inside the iframe, not the page.
  *
+ * Apple Pay caveat: requires the TOP-LEVEL frame to be HTTPS (Vercel prod
+ * satisfies this). On http://localhost dev, the wallet sheet may fail.
+ *
  * On success or failure inside Tranzila's iframe, Tranzila redirects
- * the iframe to our /trial/success or /trial/failed routes. Those
- * pages postMessage their parent (us); we forward via onComplete.
+ * the iframe to our return proxy → FE /trial/success. That page
+ * postMessage's its parent; we forward via onComplete.
  *
  * The subscription state lives in user_metadata, written by the BE
  * when Tranzila's notify_url callback hits. postMessage tells us the
  * user-visible flow finished — the consumer polls user_metadata
  * separately until the token appears (notify can lag the iframe
  * redirect by a couple seconds).
- *
- * Apple Pay caveat: requires the TOP-LEVEL frame to be HTTPS. On
- * http://localhost dev, the button renders but the wallet sheet
- * fails. Use a typed card (or ngrok HTTPS for the FE) for end-to-end
- * Apple Pay testing.
  */
 
 const IFRAME_NAME = 'craftad-tranzila-iframe';
@@ -79,21 +77,12 @@ export function TranzilaIframe({ iframeUrl, fields, onComplete }) {
         </div>
       )}
 
-      {/* `allow=payment` is the modern Permissions Policy attribute;
-          `allowpaymentrequest='true'` is the legacy attribute Tranzila's
-          docs explicitly require for the Google Pay button to render
-          inside the iframe. We pass both — modern browsers honor the
-          first, Tranzila's iframe still checks the second.
-          dir=ltr because card numbers + Tranzila's hosted UI are LTR. */}
       <iframe
         name={IFRAME_NAME}
         title="Tranzila payment"
         dir="ltr"
         allow="payment"
         allowpaymentrequest="true"
-        /* min-height tightens on small phones — Tranzila's hosted form
-         * fits in ~460px on mobile. Bumps to 520px from sm: where there's
-         * room to breathe. */
         className="block w-full min-h-[460px] sm:min-h-[520px] border-0 bg-white"
       />
     </div>
